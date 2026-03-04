@@ -97,11 +97,13 @@ export function generateVisual(
   imageDataUrl: string,
   description: string,
   templateId: string,
+  aspectRatio: string,
+  imageSize: string,
   signal?: AbortSignal,
 ): Promise<GenerateResponse> {
   return callAPI<GenerateResponse>(
     '/generate',
-    { imageDataUrl, description, templateId },
+    { imageDataUrl, description, templateId, aspectRatio, imageSize },
     signal,
     GENERATE_TIMEOUT_MS,
   );

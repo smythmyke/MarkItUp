@@ -106,11 +106,36 @@ export interface AnnotateResponse {
 
 // --- Presentation Templates ---
 
+export type TemplateCategory = 'product' | 'professional' | 'technical' | 'creative';
+
+export const TEMPLATE_CATEGORIES: { id: TemplateCategory; label: string }[] = [
+  { id: 'product', label: 'Product' },
+  { id: 'professional', label: 'Professional' },
+  { id: 'technical', label: 'Technical' },
+  { id: 'creative', label: 'Creative' },
+];
+
 export interface PresentationTemplate {
   id: string;
   name: string;
   description: string;
   previewUrl: string;
+  category: TemplateCategory;
+}
+
+// --- Output Size Presets ---
+
+export type OutputSizeCategory = 'social' | 'marketing' | 'product' | 'banners';
+
+export interface OutputSizePreset {
+  id: string;
+  label: string;              // "Instagram Square"
+  platform: string;           // "Instagram" — for search matching
+  width: number;
+  height: number;
+  category: OutputSizeCategory;
+  geminiAspectRatio: string;  // "1:1"
+  geminiImageSize: string;    // "2K"
 }
 
 export interface TextAnalysis {
@@ -124,6 +149,30 @@ export interface TextAnalysis {
 export interface GenerateResponse {
   text: TextAnalysis;
   variations: string[]; // base64 data URLs
+}
+
+// --- Image Editor ---
+
+export type EditorTool = 'crop' | 'resize' | 'rotate' | 'adjust' | 'bgremoval';
+
+export interface CropRegion {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export type AspectRatioPreset = 'free' | '16:9' | '4:3' | '1:1' | '9:16' | '3:4';
+
+export interface ImageAdjustments {
+  brightness: number; // -100 to 100
+  contrast: number;   // -100 to 100
+  saturation: number; // -100 to 100
+}
+
+export interface ImageDimensions {
+  width: number;
+  height: number;
 }
 
 // --- Toast ---

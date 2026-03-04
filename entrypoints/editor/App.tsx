@@ -5,16 +5,24 @@ import { ToastProvider, useToast } from '../../contexts/ToastContext';
 import ImageImport from '../../components/ImageImport';
 import TemplatePicker from '../../components/TemplatePicker';
 import DescriptionInput from '../../components/DescriptionInput';
+import OutputSizePicker from '../../components/OutputSizePicker';
 import VariationGrid from '../../components/VariationGrid';
 import ExportPanel from '../../components/ExportPanel';
 import AuthButton from '../../components/AuthButton';
 import InsufficientCreditsModal from '../../components/InsufficientCreditsModal';
 import CreditPurchase from '../../components/CreditPurchase';
+import ImageEditor from '../../components/ImageEditor';
 import type { ExportOptions, PresentationTemplate } from '../../types';
 import { defaultTemplate } from '../../lib/presentationTemplates';
 import { downloadDataUrl } from '../../lib/utils';
 import { useCreditGate } from '../../hooks/useCreditGate';
 import { generateVisual } from '../../lib/api';
+import {
+  DEFAULT_OUTPUT_SIZE_ID,
+  findPresetById,
+  resolveGeminiConfig,
+  resizeImageToTarget,
+} from '../../lib/outputSizes';
 
 import headerLogoUrl from '../../assets/header-logo.png';
 
@@ -26,6 +34,12 @@ function Editor() {
   const [selectedVariation, setSelectedVariation] = useState(0);
   const [checkedVariations, setCheckedVariations] = useState<Set<number>>(new Set());
   const [showPurchase, setShowPurchase] = useState(false);
+  const [showEditor, setShowEditor] = useState(false);
+  const [selectedPresetId, setSelectedPresetId] = useState<string>(
+    () => localStorage.getItem('markitup:outputSize') || DEFAULT_OUTPUT_SIZE_ID,
+  );
+  const [customWidth, setCustomWidth] = useState(1080);
+  const [customHeight, setCustomHeight] = useState(1080);
   const [exportOptions, setExportOptions] = useState<ExportOptions>({
     format: 'png',
     quality: 0.9,
@@ -51,6 +65,11 @@ function Editor() {
     }
   }, [gateError, showInsufficientModal, showToast]);
 
+  // Persist selected output size
+  useEffect(() => {
+    localStorage.setItem('markitup:outputSize', selectedPresetId);
+  }, [selectedPresetId]);
+
   // Listen for "Buy Credits" from AuthButton dropdown
   useEffect(() => {
     function handleOpenPurchase() {
@@ -64,6 +83,8 @@ function Editor() {
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') {
+        // Editor modal handles its own Escape
+        if (showEditor) return;
         if (showPurchase) {
           setShowPurchase(false);
           return;
@@ -76,7 +97,7 @@ function Editor() {
     }
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [showPurchase, showInsufficientModal, dismissModal]);
+  }, [showEditor, showPurchase, showInsufficientModal, dismissModal]);
 
   // --- Generate ---
 
@@ -87,17 +108,32 @@ function Editor() {
     const controller = new AbortController();
     abortRef.current = controller;
 
+    // Resolve output size config
+    const preset = selectedPresetId !== 'custom' ? findPresetById(selectedPresetId) : null;
+    const targetWidth = preset ? preset.width : customWidth;
+    const targetHeight = preset ? preset.height : customHeight;
+    const gemini = preset
+      ? { aspectRatio: preset.geminiAspectRatio, imageSize: preset.geminiImageSize }
+      : resolveGeminiConfig(customWidth, customHeight);
+
     execute(async () => {
       const result = await generateVisual(
         imageDataUrl,
         description.trim(),
         selectedTemplate.id,
+        gemini.aspectRatio,
+        gemini.imageSize,
         controller.signal,
       );
 
-      setVariations(result.variations);
+      // Resize all variations to exact target dimensions
+      const resized = await Promise.all(
+        result.variations.map((v) => resizeImageToTarget(v, targetWidth, targetHeight)),
+      );
+
+      setVariations(resized);
       setSelectedVariation(0);
-      setCheckedVariations(new Set(result.variations.map((_, i) => i)));
+      setCheckedVariations(new Set(resized.map((_, i) => i)));
 
       if (result.variations.length < 3) {
         showToast(
@@ -108,7 +144,7 @@ function Editor() {
 
       return result;
     });
-  }, [imageDataUrl, description, selectedTemplate.id, execute, showToast]);
+  }, [imageDataUrl, description, selectedTemplate.id, selectedPresetId, customWidth, customHeight, execute, showToast]);
 
   const handleRegenerate = useCallback(() => {
     handleGenerate();
@@ -163,6 +199,15 @@ function Editor() {
     setSelectedTemplate(defaultTemplate);
   }, []);
 
+  const handleEditDone = useCallback((editedDataUrl: string) => {
+    setImageDataUrl(editedDataUrl);
+    setVariations([]);
+    setSelectedVariation(0);
+    setCheckedVariations(new Set());
+    setShowEditor(false);
+    showToast('Image updated', 'success');
+  }, [showToast]);
+
   const hasResult = variations.length > 0;
 
   return (
@@ -210,6 +255,21 @@ function Editor() {
         {/* Sidebar */}
         {imageDataUrl && (
           <aside className="flex w-80 shrink-0 flex-col gap-5 overflow-y-auto scrollbar-hidden border-l border-ds-border bg-ds-surface p-4">
+            {/* Edit Image */}
+            {!generating && (
+              <button
+                type="button"
+                onClick={() => setShowEditor(true)}
+                className="flex items-center justify-center gap-2 rounded-md border border-ds-border-light px-3 py-2 text-sm text-ds-text-muted transition-colors hover:border-ds-accent hover:text-ds-text"
+              >
+                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+                  <path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+                </svg>
+                Edit Image
+              </button>
+            )}
+
             {/* Description */}
             <DescriptionInput
               description={description}
@@ -229,6 +289,17 @@ function Editor() {
               onTemplateChange={setSelectedTemplate}
             />
 
+            <div className="h-px bg-ds-border" />
+
+            {/* Output Size */}
+            <OutputSizePicker
+              selectedPresetId={selectedPresetId}
+              customWidth={customWidth}
+              customHeight={customHeight}
+              onPresetChange={setSelectedPresetId}
+              onCustomSizeChange={(w, h) => { setCustomWidth(w); setCustomHeight(h); }}
+            />
+
             {/* Variation selector (shown below main when results exist) */}
             {(hasResult || generating) && (
               <>
@@ -240,6 +311,12 @@ function Editor() {
                   checkedIndices={checkedVariations}
                   onToggleCheck={handleToggleCheck}
                   loading={generating}
+                  outputSizeLabel={(() => {
+                    const p = selectedPresetId !== 'custom' ? findPresetById(selectedPresetId) : null;
+                    const w = p ? p.width : customWidth;
+                    const h = p ? p.height : customHeight;
+                    return `${w} \u00d7 ${h}`;
+                  })()}
                 />
               </>
             )}
@@ -272,6 +349,14 @@ function Editor() {
       )}
 
       {showPurchase && <CreditPurchase onClose={() => setShowPurchase(false)} />}
+
+      {showEditor && imageDataUrl && (
+        <ImageEditor
+          imageDataUrl={imageDataUrl}
+          onDone={handleEditDone}
+          onCancel={() => setShowEditor(false)}
+        />
+      )}
     </div>
   );
 }

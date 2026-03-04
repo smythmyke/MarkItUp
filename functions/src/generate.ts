@@ -8,6 +8,8 @@ interface GenerateBody {
   imageDataUrl: string;
   description: string;
   templateId: string;
+  aspectRatio?: string;
+  imageSize?: string;
 }
 
 interface TextAnalysisResult {
@@ -22,6 +24,44 @@ interface GenerateResult {
   text: TextAnalysisResult;
   variations: string[]; // base64 data URLs of generated images
 }
+
+/**
+ * Detailed layout directives for each of the 3 variations.
+ * Prepended to the image prompt to ensure Gemini treats layout as top priority.
+ */
+const VARIATION_DIRECTIVES: string[] = [
+  // V1: Hero Centered
+  `LAYOUT DIRECTIVE — HERO CENTERED:
+Place the screenshot as the dominant hero element in the CENTER of the composition.
+The screenshot should occupy 50-65% of the total image area.
+Headline text appears ABOVE the screenshot, centered and prominent.
+Sub-headline appears directly below the headline.
+Tooltip/callout anchored to the screenshot with a clean connector line.
+The overall composition is SYMMETRICAL and balanced — centered axis, equal margins.
+Use generous padding around all elements. The feel should be stable, polished, and focused.`,
+
+  // V2: Split/Offset
+  `LAYOUT DIRECTIVE — SPLIT OFFSET:
+Divide the composition into a 40/60 split layout, like an editorial magazine spread.
+LEFT SIDE (40%): Headline and sub-headline text, vertically centered, left-aligned.
+RIGHT SIDE (60%): Screenshot displayed prominently, filling the right portion.
+The layout is intentionally ASYMMETRIC — text and image do NOT share a center axis.
+Tooltip/callout appears near the screenshot, anchored to the highlighted element.
+Add a subtle vertical divider or color block transition between the two halves.
+The feel should be editorial, sophisticated, like a magazine feature page.
+Ensure the text side has a contrasting background tone for visual separation.`,
+
+  // V3: Angled Float
+  `LAYOUT DIRECTIVE — ANGLED FLOAT:
+Display the screenshot ROTATED 15-25 degrees, floating dynamically in the composition.
+Add a dramatic drop shadow beneath the angled screenshot for depth and dimension.
+Headline text is LARGE and anchored to one corner (top-left or bottom-right).
+Sub-headline positioned near the headline but offset for visual tension.
+The overall composition follows a DIAGONAL flow from one corner to the opposite.
+Tooltip/callout positioned at the edge of the rotated screenshot.
+The feel should be dynamic, energetic, and eye-catching — like a poster or ad.
+Use the angle to create visual movement and break the static grid.`,
+];
 
 /**
  * Extract base64 data and media type from a data URL.
@@ -151,7 +191,9 @@ async function runGeminiGeneration(
   base64Data: string,
   mediaType: string,
   imagePrompt: string,
-  variationIndex: number
+  variationIndex: number,
+  aspectRatio?: string,
+  imageSize?: string,
 ): Promise<string | null> {
   console.log(`runGeminiGeneration[${variationIndex}]: starting`, {
     mediaType,
@@ -163,17 +205,18 @@ async function runGeminiGeneration(
     const model = genAI.getGenerativeModel({
       model: "gemini-2.5-flash-image",
       generationConfig: {
-        // @ts-expect-error — responseModalities is supported in Gemini 2.0 but not yet in SDK types
+        // @ts-expect-error — responseModalities/imageConfig are supported in Gemini 2.0 but not yet in SDK types
         responseModalities: ["image", "text"],
+        ...(aspectRatio || imageSize ? {
+          imageConfig: {
+            ...(aspectRatio && { aspectRatio }),
+            ...(imageSize && { imageSize }),
+          },
+        } : {}),
       },
     });
 
-    const variationHint =
-      variationIndex === 0
-        ? "Create the primary, most polished version."
-        : variationIndex === 1
-        ? "Create an alternative version with a slightly different layout or color emphasis."
-        : "Create a third variation with a different compositional approach.";
+    const layoutDirective = VARIATION_DIRECTIVES[variationIndex] || VARIATION_DIRECTIVES[0];
 
     const result = await model.generateContent([
       {
@@ -183,7 +226,7 @@ async function runGeminiGeneration(
         },
       },
       {
-        text: `${imagePrompt}\n\nVARIATION INSTRUCTION: ${variationHint}\n\nGenerate the marketing visual as an image. The screenshot provided above should be incorporated into the final visual.`,
+        text: `${layoutDirective}\n\n${imagePrompt}\n\nGenerate the marketing visual as an image. The screenshot provided above should be incorporated into the final visual.`,
       },
     ]);
 
@@ -263,12 +306,29 @@ export async function handleGenerateRequest(
   body: GenerateBody,
   user: admin.auth.DecodedIdToken
 ): Promise<GenerateResult> {
-  const { imageDataUrl, description, templateId } = body;
+  const { imageDataUrl, description, templateId, aspectRatio, imageSize } = body;
 
   if (!imageDataUrl || !description || !templateId) {
     throw new functions.https.HttpsError(
       "invalid-argument",
       "imageDataUrl, description, and templateId are required"
+    );
+  }
+
+  // Validate aspectRatio / imageSize if provided
+  const VALID_ASPECT_RATIOS = ["1:1", "3:2", "2:3", "3:4", "4:3", "4:5", "5:4", "9:16", "16:9", "21:9"];
+  const VALID_IMAGE_SIZES = ["1K", "2K", "4K"];
+
+  if (aspectRatio && !VALID_ASPECT_RATIOS.includes(aspectRatio)) {
+    throw new functions.https.HttpsError(
+      "invalid-argument",
+      `Invalid aspectRatio: ${aspectRatio}`
+    );
+  }
+  if (imageSize && !VALID_IMAGE_SIZES.includes(imageSize)) {
+    throw new functions.https.HttpsError(
+      "invalid-argument",
+      `Invalid imageSize: ${imageSize}`
     );
   }
 
@@ -320,7 +380,7 @@ export async function handleGenerateRequest(
 
   // Run 3 generations in parallel
   const variationPromises = [0, 1, 2].map((i) =>
-    runGeminiGeneration(genAI, base64Data, mediaType, imagePrompt, i)
+    runGeminiGeneration(genAI, base64Data, mediaType, imagePrompt, i, aspectRatio, imageSize)
   );
 
   const variationResults = await Promise.all(variationPromises);

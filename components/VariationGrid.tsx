@@ -5,6 +5,7 @@ interface VariationGridProps {
   checkedIndices: Set<number>;
   onToggleCheck: (index: number) => void;
   loading: boolean;
+  outputSizeLabel?: string;
 }
 
 function LoadingPlaceholder() {
@@ -34,6 +35,7 @@ export default function VariationGrid({
   checkedIndices,
   onToggleCheck,
   loading,
+  outputSizeLabel,
 }: VariationGridProps) {
   if (loading && variations.length === 0) {
     return (
@@ -89,6 +91,12 @@ export default function VariationGrid({
                 className="h-4 w-4 cursor-pointer rounded border-ds-border accent-ds-accent"
               />
             </label>
+
+            {outputSizeLabel && (
+              <div className="mt-1 text-center text-[10px] text-ds-text-dim">
+                {outputSizeLabel}
+              </div>
+            )}
           </div>
         ))}
       </div>

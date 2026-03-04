@@ -1,7 +1,7 @@
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
 import { handleAnnotateRequest } from "./annotate";
-import { handleGenerateRequest } from "./generate";
+import { handleGenerateRequest, handleRegenRequest } from "./generate";
 import { handleCreditRequest, getBalance } from "./credits";
 import { handleWebhookEvent } from "./stripe";
 
@@ -119,6 +119,25 @@ export const api = functions.https.onRequest(async (req, res) => {
       }
 
       const result = await handleGenerateRequest(req.body, decodedToken);
+      res.status(200).json({ data: result });
+      return;
+    }
+
+    // Regen endpoint — OCR-check + synonym swap + regenerate single variation
+    if (path === "/regen") {
+      const { chargeCredit } = req.body || {};
+      if (chargeCredit) {
+        const db = admin.firestore();
+        const balance = await getBalance(db, decodedToken.uid);
+        if (balance.balance <= 0) {
+          res.status(402).json({
+            error: "No credits remaining. Purchase credits to continue.",
+          });
+          return;
+        }
+      }
+
+      const result = await handleRegenRequest(req.body, decodedToken);
       res.status(200).json({ data: result });
       return;
     }

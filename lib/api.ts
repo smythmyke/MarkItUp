@@ -1,9 +1,10 @@
 import { auth } from './firebase';
-import type { Annotation, CreditBalance, GenerateResponse } from '../types';
+import type { Annotation, CreditBalance, GenerateResponse, RegenResponse, TextAnalysis } from '../types';
 
 const API_BASE_URL = 'https://us-central1-markitup-ext.cloudfunctions.net/api';
 const REQUEST_TIMEOUT_MS = 30_000;
-const GENERATE_TIMEOUT_MS = 120_000; // Generate pipeline takes longer (text analysis + 3x image gen)
+const GENERATE_TIMEOUT_MS = 120_000; // Generate pipeline takes longer (text analysis + image gen)
+const REGEN_TIMEOUT_MS = 90_000;
 
 async function getAuthToken(): Promise<string> {
   const user = auth.currentUser;
@@ -106,6 +107,36 @@ export function generateVisual(
     { imageDataUrl, description, templateId, aspectRatio, imageSize },
     signal,
     GENERATE_TIMEOUT_MS,
+  );
+}
+
+// --- Regen (OCR + synonym swap + single image regeneration) ---
+
+export function regenVariation(
+  variationImageDataUrl: string,
+  sourceImageDataUrl: string,
+  textAnalysis: TextAnalysis | null,
+  templateId: string,
+  variationIndex: number,
+  aspectRatio: string,
+  imageSize: string,
+  chargeCredit: boolean,
+  signal?: AbortSignal,
+): Promise<RegenResponse> {
+  return callAPI<RegenResponse>(
+    '/regen',
+    {
+      variationImageDataUrl,
+      sourceImageDataUrl,
+      textAnalysis,
+      templateId,
+      variationIndex,
+      aspectRatio,
+      imageSize,
+      chargeCredit,
+    },
+    signal,
+    REGEN_TIMEOUT_MS,
   );
 }
 

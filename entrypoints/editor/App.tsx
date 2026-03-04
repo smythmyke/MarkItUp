@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AuthProvider, useAuth } from '../../contexts/AuthContext';
 import { CreditProvider } from '../../contexts/CreditContext';
 import { ToastProvider, useToast } from '../../contexts/ToastContext';
@@ -12,11 +12,12 @@ import AuthButton from '../../components/AuthButton';
 import InsufficientCreditsModal from '../../components/InsufficientCreditsModal';
 import CreditPurchase from '../../components/CreditPurchase';
 import ImageEditor from '../../components/ImageEditor';
-import type { ExportOptions, PresentationTemplate } from '../../types';
+import FramedPreview from '../../components/FramedPreview';
+import type { ExportOptions, PresentationTemplate, TextAnalysis } from '../../types';
 import { defaultTemplate } from '../../lib/presentationTemplates';
 import { downloadDataUrl } from '../../lib/utils';
 import { useCreditGate } from '../../hooks/useCreditGate';
-import { generateVisual } from '../../lib/api';
+import { generateVisual, regenVariation } from '../../lib/api';
 import {
   DEFAULT_OUTPUT_SIZE_ID,
   findPresetById,
@@ -40,6 +41,9 @@ function Editor() {
   );
   const [customWidth, setCustomWidth] = useState(1080);
   const [customHeight, setCustomHeight] = useState(1080);
+  const [textAnalysis, setTextAnalysis] = useState<TextAnalysis | null>(null);
+  const [regenLoadingIndex, setRegenLoadingIndex] = useState(-1);
+  const [freeRegenUsed, setFreeRegenUsed] = useState(false);
   const [exportOptions, setExportOptions] = useState<ExportOptions>({
     format: 'png',
     quality: 0.9,
@@ -49,6 +53,15 @@ function Editor() {
   const { execute, loading: generating, error: gateError, showInsufficientModal, dismissModal } = useCreditGate();
   const { showToast } = useToast();
   const { error: authError, clearError: clearAuthError } = useAuth();
+
+  // Shared target dimensions (used by FramedPreview + handleGenerate + VariationGrid label)
+  const { targetWidth, targetHeight } = useMemo(() => {
+    const preset = selectedPresetId !== 'custom' ? findPresetById(selectedPresetId) : null;
+    return {
+      targetWidth: preset ? preset.width : customWidth,
+      targetHeight: preset ? preset.height : customHeight,
+    };
+  }, [selectedPresetId, customWidth, customHeight]);
 
   // Show auth errors as toasts
   useEffect(() => {
@@ -102,7 +115,7 @@ function Editor() {
   // --- Generate ---
 
   const handleGenerate = useCallback(() => {
-    if (!imageDataUrl || !description.trim()) return;
+    if (!imageDataUrl) return;
 
     abortRef.current?.abort();
     const controller = new AbortController();
@@ -110,8 +123,6 @@ function Editor() {
 
     // Resolve output size config
     const preset = selectedPresetId !== 'custom' ? findPresetById(selectedPresetId) : null;
-    const targetWidth = preset ? preset.width : customWidth;
-    const targetHeight = preset ? preset.height : customHeight;
     const gemini = preset
       ? { aspectRatio: preset.geminiAspectRatio, imageSize: preset.geminiImageSize }
       : resolveGeminiConfig(customWidth, customHeight);
@@ -134,17 +145,19 @@ function Editor() {
       setVariations(resized);
       setSelectedVariation(0);
       setCheckedVariations(new Set(resized.map((_, i) => i)));
+      setTextAnalysis(result.text);
+      setFreeRegenUsed(false);
 
-      if (result.variations.length < 3) {
+      if (result.variations.length < 2) {
         showToast(
-          `${result.variations.length}/3 variations generated — some failed`,
+          `${result.variations.length}/2 variations generated — some failed`,
           'info',
         );
       }
 
       return result;
     });
-  }, [imageDataUrl, description, selectedTemplate.id, selectedPresetId, customWidth, customHeight, execute, showToast]);
+  }, [imageDataUrl, description, selectedTemplate.id, selectedPresetId, customWidth, customHeight, targetWidth, targetHeight, execute, showToast]);
 
   const handleRegenerate = useCallback(() => {
     handleGenerate();
@@ -154,6 +167,63 @@ function Editor() {
     abortRef.current?.abort();
     abortRef.current = null;
   }, []);
+
+  // --- Regen ---
+
+  const handleRegen = useCallback((index: number) => {
+    if (!imageDataUrl || regenLoadingIndex >= 0) return;
+    if (!variations[index]) return;
+
+    const chargeCredit = freeRegenUsed;
+    setRegenLoadingIndex(index);
+
+    const preset = selectedPresetId !== 'custom' ? findPresetById(selectedPresetId) : null;
+    const gemini = preset
+      ? { aspectRatio: preset.geminiAspectRatio, imageSize: preset.geminiImageSize }
+      : resolveGeminiConfig(customWidth, customHeight);
+
+    const doRegen = async () => {
+      try {
+        const result = await regenVariation(
+          variations[index],
+          imageDataUrl,
+          textAnalysis,
+          selectedTemplate.id,
+          index,
+          gemini.aspectRatio,
+          gemini.imageSize,
+          chargeCredit,
+        );
+
+        const resized = await resizeImageToTarget(result.variation, targetWidth, targetHeight);
+
+        setVariations((prev) => {
+          const next = [...prev];
+          next[index] = resized;
+          return next;
+        });
+
+        if (result.textCorrected) {
+          setTextAnalysis(result.text);
+          showToast('Variation regenerated with improved text', 'success');
+        } else {
+          showToast('Variation regenerated', 'success');
+        }
+
+        setFreeRegenUsed(true);
+      } catch (err: any) {
+        showToast(err.message || 'Regen failed', 'error');
+      } finally {
+        setRegenLoadingIndex(-1);
+      }
+    };
+
+    if (chargeCredit) {
+      execute(doRegen);
+    } else {
+      doRegen();
+    }
+  }, [imageDataUrl, textAnalysis, regenLoadingIndex, variations, freeRegenUsed, selectedPresetId, customWidth, customHeight, selectedTemplate.id, targetWidth, targetHeight, execute, showToast]);
 
   // --- Export ---
 
@@ -197,6 +267,9 @@ function Editor() {
     setSelectedVariation(0);
     setCheckedVariations(new Set());
     setSelectedTemplate(defaultTemplate);
+    setTextAnalysis(null);
+    setRegenLoadingIndex(-1);
+    setFreeRegenUsed(false);
   }, []);
 
   const handleEditDone = useCallback((editedDataUrl: string) => {
@@ -205,6 +278,8 @@ function Editor() {
     setSelectedVariation(0);
     setCheckedVariations(new Set());
     setShowEditor(false);
+    setTextAnalysis(null);
+    setFreeRegenUsed(false);
     showToast('Image updated', 'success');
   }, [showToast]);
 
@@ -243,11 +318,18 @@ function Editor() {
               className="max-h-full max-w-full rounded-lg object-contain shadow-lg"
             />
           ) : (
-            /* Show source image before generation */
-            <img
-              src={imageDataUrl}
-              alt="Source image"
-              className="max-h-full max-w-full rounded-lg object-contain shadow-lg"
+            /* Show source image with zoom/pan crop frame */
+            <FramedPreview
+              imageDataUrl={imageDataUrl}
+              targetWidth={targetWidth}
+              targetHeight={targetHeight}
+              onCrop={(cropped) => {
+                setImageDataUrl(cropped);
+                setVariations([]);
+                setSelectedVariation(0);
+                setCheckedVariations(new Set());
+                showToast('Image cropped to output size', 'success');
+              }}
             />
           )}
         </main>
@@ -311,12 +393,10 @@ function Editor() {
                   checkedIndices={checkedVariations}
                   onToggleCheck={handleToggleCheck}
                   loading={generating}
-                  outputSizeLabel={(() => {
-                    const p = selectedPresetId !== 'custom' ? findPresetById(selectedPresetId) : null;
-                    const w = p ? p.width : customWidth;
-                    const h = p ? p.height : customHeight;
-                    return `${w} \u00d7 ${h}`;
-                  })()}
+                  outputSizeLabel={`${targetWidth} \u00d7 ${targetHeight}`}
+                  onRegen={handleRegen}
+                  regenLoadingIndex={regenLoadingIndex}
+                  freeRegenAvailable={!freeRegenUsed}
                 />
               </>
             )}

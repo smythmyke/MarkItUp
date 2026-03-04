@@ -22,7 +22,7 @@ export default function DescriptionInput({
   onCancel,
 }: DescriptionInputProps) {
   const { user } = useAuth();
-  const canGenerate = !!user && description.trim().length > 0 && !loading;
+  const canGenerate = !!user && !loading;
   const charPercent = description.length / MAX_LENGTH;
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
@@ -39,14 +39,15 @@ export default function DescriptionInput({
   return (
     <div className="flex flex-col gap-3">
       <h3 className="text-sm leading-snug text-ds-text-muted">
-        Describe what the image shows and what to highlight
+        Describe what to highlight{' '}
+        <span className="text-ds-text-dim">(optional — leave empty for scenic mode)</span>
       </h3>
       <div className="relative">
         <textarea
           value={description}
           onChange={(e) => onDescriptionChange(e.target.value.slice(0, MAX_LENGTH))}
           onKeyDown={handleKeyDown}
-          placeholder={'e.g. "This is my SaaS dashboard. Highlight the bulk upload button and emphasize the real-time metrics panel."'}
+          placeholder={'e.g. "This is my SaaS dashboard. Highlight the bulk upload button and emphasize the real-time metrics panel."\n\nLeave empty for a text-free scenic visual.'}
           maxLength={MAX_LENGTH}
           rows={5}
           className="w-full resize-none rounded-lg border border-ds-border-light bg-ds-elevated px-3 py-3 text-sm leading-relaxed text-ds-text placeholder-ds-text-dim focus:border-ds-accent focus:outline-none"

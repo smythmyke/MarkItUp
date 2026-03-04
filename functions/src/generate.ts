@@ -2,7 +2,7 @@ import * as admin from "firebase-admin";
 import * as functions from "firebase-functions";
 import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
 import { useCredit, initCredits } from "./credits";
-import { getTemplate, buildImagePrompt } from "./templates";
+import { getTemplate, buildImagePrompt, buildScenicImagePrompt } from "./templates";
 
 interface GenerateBody {
   imageDataUrl: string;
@@ -21,37 +21,38 @@ interface TextAnalysisResult {
 }
 
 interface GenerateResult {
-  text: TextAnalysisResult;
-  variations: string[]; // base64 data URLs of generated images
+  text: TextAnalysisResult | null; // null for scenic mode
+  variations: string[];            // base64 data URLs of generated images
 }
 
 /**
- * Detailed layout directives for each of the 3 variations.
- * Prepended to the image prompt to ensure Gemini treats layout as top priority.
+ * Detailed layout directives for each variation.
+ * V1 = Screenshot Focused (screenshot is hero, large and legible)
+ * V2 = Marketing Focused (full template treatment, dramatic composition)
+ * V3 = Angled Float (available for regen)
  */
 const VARIATION_DIRECTIVES: string[] = [
-  // V1: Hero Centered
-  `LAYOUT DIRECTIVE — HERO CENTERED:
-Place the screenshot as the dominant hero element in the CENTER of the composition.
-The screenshot should occupy 50-65% of the total image area.
-Headline text appears ABOVE the screenshot, centered and prominent.
-Sub-headline appears directly below the headline.
-Tooltip/callout anchored to the screenshot with a clean connector line.
-The overall composition is SYMMETRICAL and balanced — centered axis, equal margins.
-Use generous padding around all elements. The feel should be stable, polished, and focused.`,
+  // V1: Screenshot Focused
+  `LAYOUT DIRECTIVE — SCREENSHOT FOCUSED:
+The screenshot MUST be the dominant visual element, occupying at least 70-85% of the composition.
+Display the screenshot FLAT or near-flat (maximum 5° tilt). Do NOT place it inside a device frame or mockup.
+The screenshot content must be clearly LEGIBLE — do not shrink, crop, or obscure it.
+Keep all text elements (headline, sub-headline, tooltip) SMALL and positioned along the edges or corners.
+Text should complement the screenshot, not compete with it.
+Add only minimal decorative elements — a subtle background gradient or border is fine.
+The feel should be clean, focused, and documentation-quality — the screenshot tells the story.`,
 
-  // V2: Split/Offset
-  `LAYOUT DIRECTIVE — SPLIT OFFSET:
-Divide the composition into a 40/60 split layout, like an editorial magazine spread.
-LEFT SIDE (40%): Headline and sub-headline text, vertically centered, left-aligned.
-RIGHT SIDE (60%): Screenshot displayed prominently, filling the right portion.
-The layout is intentionally ASYMMETRIC — text and image do NOT share a center axis.
-Tooltip/callout appears near the screenshot, anchored to the highlighted element.
-Add a subtle vertical divider or color block transition between the two halves.
-The feel should be editorial, sophisticated, like a magazine feature page.
-Ensure the text side has a contrasting background tone for visual separation.`,
+  // V2: Marketing Focused
+  `LAYOUT DIRECTIVE — MARKETING FOCUSED:
+Create a polished marketing composition where text and screenshot share visual prominence.
+The screenshot can be placed inside a device frame, tilted, or styled per the template's visual direction.
+Headline text should be LARGE and prominent — this is a marketing piece, not documentation.
+Sub-headline appears near the headline in supporting weight.
+Tooltip/callout highlights the key UI element with the template's signature style.
+Apply the full visual treatment: gradients, shadows, decorative elements, perspective effects.
+The feel should be eye-catching and social-media-ready — prioritize visual impact over screenshot legibility.`,
 
-  // V3: Angled Float
+  // V3: Angled Float (used for regen)
   `LAYOUT DIRECTIVE — ANGLED FLOAT:
 Display the screenshot ROTATED 15-25 degrees, floating dynamically in the composition.
 Add a dramatic drop shadow beneath the angled screenshot for depth and dimension.
@@ -300,7 +301,7 @@ async function runGeminiGeneration(
 /**
  * Main generate handler: two-step pipeline.
  * Step 1: Gemini text analysis + copywriting
- * Step 2: Gemini image generation × 3 (parallel)
+ * Step 2: Gemini image generation × 2 (parallel)
  */
 export async function handleGenerateRequest(
   body: GenerateBody,
@@ -308,10 +309,10 @@ export async function handleGenerateRequest(
 ): Promise<GenerateResult> {
   const { imageDataUrl, description, templateId, aspectRatio, imageSize } = body;
 
-  if (!imageDataUrl || !description || !templateId) {
+  if (!imageDataUrl || !templateId) {
     throw new functions.https.HttpsError(
       "invalid-argument",
-      "imageDataUrl, description, and templateId are required"
+      "imageDataUrl and templateId are required"
     );
   }
 
@@ -361,25 +362,32 @@ export async function handleGenerateRequest(
   }
   const genAI = new GoogleGenerativeAI(geminiApiKey);
 
-  // --- Step 1: Text Analysis ---
-  console.log(`Generate: Step 1 — text analysis for user ${user.uid}, template ${templateId}`);
-  const analysisResult = await runTextAnalysis(
-    genAI,
-    base64Data,
-    mediaType,
-    description,
-    template.analysisPrompt
-  );
+  // Scenic mode: skip text analysis when description is empty
+  const scenic = !description || !description.trim();
+  let analysisResult: TextAnalysisResult | null = null;
+  let imagePrompt: string;
 
-  console.log("Analysis result:", JSON.stringify(analysisResult));
+  if (scenic) {
+    console.log(`Generate: scenic mode for user ${user.uid}, template ${templateId} — skipping text analysis`);
+    imagePrompt = buildScenicImagePrompt(template);
+  } else {
+    // --- Step 1: Text Analysis ---
+    console.log(`Generate: Step 1 — text analysis for user ${user.uid}, template ${templateId}`);
+    analysisResult = await runTextAnalysis(
+      genAI,
+      base64Data,
+      mediaType,
+      description,
+      template.analysisPrompt
+    );
+    console.log("Analysis result:", JSON.stringify(analysisResult));
+    imagePrompt = buildImagePrompt(template, analysisResult);
+  }
 
-  // --- Step 2: Gemini Image Generation × 3 ---
-  const imagePrompt = buildImagePrompt(template, analysisResult);
+  console.log(`Generate: Step 2 — Gemini rendering × 2`);
 
-  console.log(`Generate: Step 2 — Gemini rendering × 3`);
-
-  // Run 3 generations in parallel
-  const variationPromises = [0, 1, 2].map((i) =>
+  // Run 2 generations in parallel
+  const variationPromises = [0, 1].map((i) =>
     runGeminiGeneration(genAI, base64Data, mediaType, imagePrompt, i, aspectRatio, imageSize)
   );
 
@@ -389,7 +397,7 @@ export async function handleGenerateRequest(
   const variations = variationResults.filter((v): v is string => v !== null);
 
   if (variations.length === 0) {
-    console.error("Generate: All 3 image generation attempts failed", {
+    console.error("Generate: All 2 image generation attempts failed", {
       userId: user.uid,
       templateId,
       analysisResult: JSON.stringify(analysisResult),
@@ -400,8 +408,8 @@ export async function handleGenerateRequest(
     );
   }
 
-  if (variations.length < 3) {
-    console.warn(`Generate: Only ${variations.length}/3 Gemini variations succeeded`);
+  if (variations.length < 2) {
+    console.warn(`Generate: Only ${variations.length}/2 Gemini variations succeeded`);
   }
 
   console.log(`Generate: complete — ${variations.length} variations produced`);
@@ -409,5 +417,276 @@ export async function handleGenerateRequest(
   return {
     text: analysisResult,
     variations,
+  };
+}
+
+// ---- Regen Feature ----
+
+interface RegenBody {
+  variationImageDataUrl: string;          // generated image to OCR
+  sourceImageDataUrl: string;             // original user screenshot
+  textAnalysis: TextAnalysisResult | null; // null for scenic mode
+  templateId: string;
+  variationIndex: number;                 // 0 or 1
+  aspectRatio?: string;
+  imageSize?: string;
+  chargeCredit: boolean;
+}
+
+interface RegenResult {
+  variation: string;                      // base64 data URL
+  text: TextAnalysisResult | null;        // null for scenic mode
+  textCorrected: boolean;
+}
+
+/**
+ * Simple Levenshtein distance between two strings.
+ */
+function levenshtein(a: string, b: string): number {
+  const m = a.length;
+  const n = b.length;
+  const dp: number[][] = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0));
+  for (let i = 0; i <= m; i++) dp[i][0] = i;
+  for (let j = 0; j <= n; j++) dp[0][j] = j;
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      dp[i][j] = a[i - 1] === b[j - 1]
+        ? dp[i - 1][j - 1]
+        : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+    }
+  }
+  return dp[m][n];
+}
+
+/**
+ * OCR: send generated image to Gemini and extract all visible text.
+ */
+async function visionCheckText(
+  genAI: GoogleGenerativeAI,
+  imageDataUrl: string
+): Promise<string | null> {
+  try {
+    const { mediaType, base64Data } = parseDataUrl(imageDataUrl);
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    const result = await model.generateContent([
+      { inlineData: { mimeType: mediaType, data: base64Data } },
+      { text: "Extract ALL visible text from this image. Return only the raw text, line by line." },
+    ]);
+    return result.response.text() || null;
+  } catch (err: any) {
+    console.error("visionCheckText: failed", err.message);
+    return null;
+  }
+}
+
+/**
+ * Compare OCR text against intended text to find misspellings.
+ * Returns deduplicated array of misspelled words.
+ */
+function compareTextAccuracy(
+  ocrText: string,
+  textAnalysis: TextAnalysisResult
+): string[] {
+  // Build intended word set from headline, subHeadline, tooltipText
+  const intendedRaw = [
+    textAnalysis.headline,
+    textAnalysis.subHeadline,
+    textAnalysis.tooltipText,
+  ].join(" ");
+
+  const normalize = (s: string) =>
+    s.toLowerCase().replace(/[^a-z0-9\s]/g, "").split(/\s+/).filter(Boolean);
+
+  const intendedWords = normalize(intendedRaw).filter((w) => w.length > 2);
+  const ocrWords = normalize(ocrText).filter((w) => w.length > 2);
+
+  const misspelled = new Set<string>();
+
+  for (const ocrWord of ocrWords) {
+    // Find closest intended word
+    let bestDist = Infinity;
+    let bestMatch = "";
+    for (const intended of intendedWords) {
+      const dist = levenshtein(ocrWord, intended);
+      if (dist < bestDist) {
+        bestDist = dist;
+        bestMatch = intended;
+      }
+    }
+    // Distance 1-2 with intended word >3 chars → likely misspelling
+    if (bestDist >= 1 && bestDist <= 2 && bestMatch.length > 3) {
+      misspelled.add(bestMatch);
+    }
+  }
+
+  return [...misspelled];
+}
+
+/**
+ * Ask Gemini to replace misspelled words with common, easily-spelled synonyms.
+ * Falls back to original text on failure.
+ */
+async function generateSynonyms(
+  genAI: GoogleGenerativeAI,
+  misspelledWords: string[],
+  textAnalysis: TextAnalysisResult
+): Promise<TextAnalysisResult> {
+  try {
+    const model = genAI.getGenerativeModel({
+      model: "gemini-2.0-flash",
+      generationConfig: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: SchemaType.OBJECT,
+          properties: {
+            headline: { type: SchemaType.STRING },
+            subHeadline: { type: SchemaType.STRING },
+            highlightTarget: { type: SchemaType.STRING },
+            tooltipText: { type: SchemaType.STRING },
+            marketingCopy: { type: SchemaType.STRING },
+          },
+          required: ["headline", "subHeadline", "highlightTarget", "tooltipText", "marketingCopy"],
+        },
+      },
+    });
+
+    const result = await model.generateContent([
+      {
+        text: `The following marketing text was rendered into an image, but these words were misspelled by the image generator: [${misspelledWords.join(", ")}].
+
+Replace ONLY those misspelled words with common, easily-spelled synonyms that preserve the marketing tone and meaning. Do not change any other words.
+
+Original text:
+- headline: "${textAnalysis.headline}"
+- subHeadline: "${textAnalysis.subHeadline}"
+- highlightTarget: "${textAnalysis.highlightTarget}"
+- tooltipText: "${textAnalysis.tooltipText}"
+- marketingCopy: "${textAnalysis.marketingCopy}"
+
+Return the full updated text as JSON.`,
+      },
+    ]);
+
+    const text = result.response.text();
+    if (!text) return textAnalysis;
+
+    const parsed = JSON.parse(text);
+    const required = ["headline", "subHeadline", "highlightTarget", "tooltipText", "marketingCopy"];
+    for (const field of required) {
+      if (typeof parsed[field] !== "string" || !parsed[field].trim()) {
+        return textAnalysis;
+      }
+    }
+    return parsed as TextAnalysisResult;
+  } catch (err: any) {
+    console.error("generateSynonyms: failed, using original text", err.message);
+    return textAnalysis;
+  }
+}
+
+/**
+ * Handle a regen request: OCR-check the variation, swap misspelled words
+ * with synonyms, and regenerate a single image.
+ */
+export async function handleRegenRequest(
+  body: RegenBody,
+  user: admin.auth.DecodedIdToken
+): Promise<RegenResult> {
+  const {
+    variationImageDataUrl,
+    sourceImageDataUrl,
+    textAnalysis,
+    templateId,
+    variationIndex,
+    aspectRatio,
+    imageSize,
+    chargeCredit,
+  } = body;
+
+  if (!variationImageDataUrl || !sourceImageDataUrl || !templateId) {
+    throw new functions.https.HttpsError(
+      "invalid-argument",
+      "variationImageDataUrl, sourceImageDataUrl, and templateId are required"
+    );
+  }
+
+  if (variationIndex < 0 || variationIndex > 2) {
+    throw new functions.https.HttpsError(
+      "invalid-argument",
+      "variationIndex must be 0, 1, or 2"
+    );
+  }
+
+  const template = getTemplate(templateId);
+  if (!template) {
+    throw new functions.https.HttpsError("invalid-argument", `Unknown template: ${templateId}`);
+  }
+
+  const db = admin.firestore();
+
+  // Deduct credit if this is a paid regen
+  if (chargeCredit) {
+    await useCredit(db, user.uid);
+  }
+
+  // Init Gemini
+  const geminiApiKey = process.env.GEMINI_API_KEY;
+  if (!geminiApiKey) {
+    throw new functions.https.HttpsError("failed-precondition", "Gemini API is not configured");
+  }
+  const genAI = new GoogleGenerativeAI(geminiApiKey);
+
+  // Scenic mode: skip OCR/synonym pipeline when textAnalysis is null
+  const scenic = !textAnalysis;
+  let currentText: TextAnalysisResult | null = textAnalysis;
+  let textCorrected = false;
+
+  const { mediaType, base64Data } = parseDataUrl(sourceImageDataUrl);
+  let imagePrompt: string;
+
+  if (scenic) {
+    console.log("Regen: scenic mode — skipping OCR/synonym pipeline");
+    imagePrompt = buildScenicImagePrompt(template);
+  } else {
+    // Step 1: OCR the generated variation
+    let workingText = { ...textAnalysis };
+
+    const ocrText = await visionCheckText(genAI, variationImageDataUrl);
+    if (ocrText) {
+      // Step 2: Compare for misspellings
+      const misspelled = compareTextAccuracy(ocrText, workingText);
+      console.log(`Regen: found ${misspelled.length} misspelled words`, misspelled);
+
+      if (misspelled.length > 0) {
+        // Step 3: Generate synonym replacements
+        workingText = await generateSynonyms(genAI, misspelled, workingText);
+        textCorrected = workingText !== textAnalysis;
+        console.log("Regen: text corrected with synonyms", {
+          original: textAnalysis.headline,
+          updated: workingText.headline,
+        });
+      }
+    } else {
+      console.warn("Regen: OCR failed, regenerating with original text");
+    }
+
+    currentText = workingText;
+    imagePrompt = buildImagePrompt(template, workingText);
+  }
+
+  const variation = await runGeminiGeneration(
+    genAI, base64Data, mediaType, imagePrompt, variationIndex, aspectRatio, imageSize
+  );
+
+  if (!variation) {
+    throw new functions.https.HttpsError("internal", "Image regeneration failed. Please try again.");
+  }
+
+  console.log(`Regen: complete — textCorrected=${textCorrected}`);
+
+  return {
+    variation,
+    text: currentText,
+    textCorrected,
   };
 }

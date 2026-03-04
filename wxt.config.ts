@@ -13,6 +13,9 @@ export default defineConfig({
       scopes: ['openid', 'email', 'profile'],
     },
     action: {},
+    sandbox: {
+      pages: ['sandbox.html'],
+    },
   },
   vite: () => ({
     plugins: [tailwindcss()],

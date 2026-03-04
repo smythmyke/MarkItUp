@@ -759,3 +759,17 @@ export function buildImagePrompt(
     .replace("{subHeadline}", analysis.subHeadline)
     .replace("{tooltipText}", analysis.tooltipText);
 }
+
+/**
+ * Build a text-free scenic image prompt.
+ * Strips the "CRITICAL TEXT RULES:" section and appends a no-text directive.
+ */
+export function buildScenicImagePrompt(template: TemplatePrompts): string {
+  const marker = "CRITICAL TEXT RULES:";
+  const idx = template.geminiPrompt.indexOf(marker);
+  const base = idx !== -1
+    ? template.geminiPrompt.substring(0, idx).trimEnd()
+    : template.geminiPrompt;
+
+  return `${base}\n\nDo NOT render any text, titles, headlines, labels, tooltips, captions, or watermarks. This is a scenic, text-free visual. Present the screenshot beautifully — focus on visual composition, lighting, shadows, and the template's decorative style.`;
+}

@@ -147,8 +147,14 @@ export interface TextAnalysis {
 }
 
 export interface GenerateResponse {
-  text: TextAnalysis;
-  variations: string[]; // base64 data URLs
+  text: TextAnalysis | null; // null for scenic mode (no description)
+  variations: string[];      // base64 data URLs
+}
+
+export interface RegenResponse {
+  variation: string;              // base64 data URL
+  text: TextAnalysis | null;      // null for scenic mode; possibly updated with synonyms
+  textCorrected: boolean;         // true if synonyms were swapped
 }
 
 // --- Image Editor ---

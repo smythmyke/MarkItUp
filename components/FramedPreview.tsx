@@ -25,7 +25,7 @@ export default function FramedPreview({
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
   const [cropping, setCropping] = useState(false);
 
-  const containerRef = useRef<HTMLDivElement>(null);
+  const previewRef = useRef<HTMLDivElement>(null);
   const dragging = useRef(false);
   const lastPointer = useRef({ x: 0, y: 0 });
 
@@ -46,9 +46,9 @@ export default function FramedPreview({
     setPanY(0);
   }, [aspectKey, imageDataUrl]);
 
-  // Observe container size
+  // Observe preview area size (excludes controls bar)
   useEffect(() => {
-    const el = containerRef.current;
+    const el = previewRef.current;
     if (!el) return;
     const ro = new ResizeObserver((entries) => {
       const { width, height } = entries[0].contentRect;
@@ -78,18 +78,25 @@ export default function FramedPreview({
       frameW = frameH * frameRatio;
     }
 
-    // Base crop: largest rectangle of target aspect ratio within source image
+    // Base crop: smallest rectangle of target aspect ratio that CONTAINS the
+    // entire source image ("contain" mode). At zoom=1 the full image is visible
+    // (letterboxed/pillarboxed). Zooming in shrinks the crop toward a "cover" fit.
     const imgRatio = imgW / imgH;
     let baseCropW: number, baseCropH: number;
     if (frameRatio >= imgRatio) {
-      baseCropW = imgW;
-      baseCropH = imgW / frameRatio;
-    } else {
+      // Frame wider than image — image fills height, pillarboxed on sides
       baseCropH = imgH;
       baseCropW = imgH * frameRatio;
+    } else {
+      // Frame taller than image — image fills width, letterboxed top/bottom
+      baseCropW = imgW;
+      baseCropH = imgW / frameRatio;
     }
 
-    return { frameW, frameH, baseCropW, baseCropH, imgW, imgH };
+    // Minimum zoom at which the crop fits entirely within the source image (no letterboxing)
+    const fillZoom = Math.max(baseCropW / imgW, baseCropH / imgH);
+
+    return { frameW, frameH, baseCropW, baseCropH, imgW, imgH, fillZoom };
   }, [containerSize, imgDims, targetWidth, targetHeight]);
 
   // Crop region at current zoom + pan
@@ -98,8 +105,9 @@ export default function FramedPreview({
     const { baseCropW, baseCropH, imgW, imgH } = geometry;
     const cropW = baseCropW / zoom;
     const cropH = baseCropH / zoom;
-    const maxPanX = (imgW - cropW) / 2;
-    const maxPanY = (imgH - cropH) / 2;
+    // maxPan can be negative when crop extends beyond image (letterboxing)
+    const maxPanX = Math.max(0, (imgW - cropW) / 2);
+    const maxPanY = Math.max(0, (imgH - cropH) / 2);
     const clampedPanX = clamp(panX, -maxPanX, maxPanX);
     const clampedPanY = clamp(panY, -maxPanY, maxPanY);
     const cropX = (imgW - cropW) / 2 - clampedPanX;
@@ -129,8 +137,8 @@ export default function FramedPreview({
       const { baseCropW, baseCropH, imgW, imgH } = geometry;
       const cropW = baseCropW / z;
       const cropH = baseCropH / z;
-      const maxPanX = (imgW - cropW) / 2;
-      const maxPanY = (imgH - cropH) / 2;
+      const maxPanX = Math.max(0, (imgW - cropW) / 2);
+      const maxPanY = Math.max(0, (imgH - cropH) / 2);
       return {
         px: clamp(px, -maxPanX, maxPanX),
         py: clamp(py, -maxPanY, maxPanY),
@@ -151,15 +159,18 @@ export default function FramedPreview({
     [clampPan, panX, panY],
   );
 
-  // Mouse wheel zoom
-  const handleWheel = useCallback(
-    (e: React.WheelEvent) => {
+  // Mouse wheel zoom — native listener to allow preventDefault on non-passive handler
+  useEffect(() => {
+    const el = previewRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
       e.preventDefault();
       const factor = e.deltaY < 0 ? 1.1 : 1 / 1.1;
       handleZoom(zoom * factor);
-    },
-    [zoom, handleZoom],
-  );
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, [zoom, handleZoom]);
 
   // --- Drag/pan handlers ---
 
@@ -218,11 +229,12 @@ export default function FramedPreview({
   }, []);
 
   const isDefaultView = zoom === 1 && panX === 0 && panY === 0;
+  const canCrop = geometry ? zoom >= geometry.fillZoom : false;
 
   if (!geometry || !cropRegion || !displayTransform) {
     // Still loading image / measuring container — show placeholder
     return (
-      <div ref={containerRef} className="relative flex h-full w-full items-center justify-center">
+      <div ref={previewRef} className="relative flex h-full w-full items-center justify-center">
         <img
           src={imageDataUrl}
           alt="Source image"
@@ -240,11 +252,11 @@ export default function FramedPreview({
   const frameTop = (containerSize.height - frameH) / 2;
 
   return (
-    <div ref={containerRef} className="relative flex h-full w-full flex-col">
+    <div className="relative flex h-full w-full flex-col">
       {/* Preview area */}
       <div
+        ref={previewRef}
         className="relative flex-1 cursor-grab select-none overflow-hidden active:cursor-grabbing"
-        onWheel={handleWheel}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
@@ -371,10 +383,11 @@ export default function FramedPreview({
         <button
           type="button"
           onClick={handleApplyCrop}
-          disabled={cropping}
+          disabled={cropping || !canCrop}
           className="rounded-md bg-ds-accent-emphasis px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-ds-accent-emphasis/90 disabled:opacity-50"
+          title={!canCrop ? 'Zoom in until the frame is filled' : undefined}
         >
-          {cropping ? 'Cropping\u2026' : 'Apply Crop'}
+          {cropping ? 'Cropping\u2026' : !canCrop ? 'Zoom in to crop' : 'Apply Crop'}
         </button>
       </div>
     </div>

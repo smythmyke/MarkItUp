@@ -762,14 +762,44 @@ export function buildImagePrompt(
 
 /**
  * Build a text-free scenic image prompt.
- * Strips the "CRITICAL TEXT RULES:" section and appends a no-text directive.
+ * Strips LAYOUT + CRITICAL TEXT RULES sections, filters text-related lines
+ * from VISUAL STYLE, and appends an emphatic no-text directive.
  */
 export function buildScenicImagePrompt(template: TemplatePrompts): string {
-  const marker = "CRITICAL TEXT RULES:";
-  const idx = template.geminiPrompt.indexOf(marker);
-  const base = idx !== -1
-    ? template.geminiPrompt.substring(0, idx).trimEnd()
-    : template.geminiPrompt;
+  // Strip everything from LAYOUT: onward (catches LAYOUT + CRITICAL TEXT RULES)
+  let prompt = template.geminiPrompt;
+  const layoutIdx = prompt.indexOf("\nLAYOUT:");
+  if (layoutIdx !== -1) {
+    prompt = prompt.substring(0, layoutIdx).trimEnd();
+  } else {
+    // Fallback: strip from CRITICAL TEXT RULES if LAYOUT not found
+    const critIdx = prompt.indexOf("CRITICAL TEXT RULES:");
+    if (critIdx !== -1) {
+      prompt = prompt.substring(0, critIdx).trimEnd();
+    }
+  }
 
-  return `${base}\n\nDo NOT render any text, titles, headlines, labels, tooltips, captions, or watermarks. This is a scenic, text-free visual. Present the screenshot beautifully — focus on visual composition, lighting, shadows, and the template's decorative style.`;
+  // Filter out lines mentioning text-related concepts from VISUAL STYLE
+  const textKeywords = /\b(headline|sub-headline|subheadline|tooltip|callout|caption|label|typography|font|text\b)/i;
+  const lines = prompt.split("\n");
+  const filtered = lines.filter((line) => {
+    // Keep non-bullet lines (section headers, blank lines, opening sentence)
+    if (!line.trimStart().startsWith("-")) return true;
+    // Drop bullet lines that reference text elements
+    return !textKeywords.test(line);
+  });
+
+  // Replace "marketing visual" language in opening line
+  filtered[0] = filtered[0]
+    .replace(/marketing visual using the provided screenshot and text/i, "scenic visual using the provided screenshot")
+    .replace(/marketing visual/i, "scenic visual");
+
+  return `${filtered.join("\n")}
+
+ABSOLUTE TEXT PROHIBITION:
+Under NO CIRCUMSTANCES render ANY text, words, letters, numbers, labels, titles, headlines, sub-headlines, tooltips, captions, watermarks, or annotations in this image.
+NEVER include ANY text whatsoever in the final image, even if the visual style description above mentions typography or text elements — ignore those references entirely.
+This is a SCENIC, TEXT-FREE visual. Focus purely on visual composition, lighting, shadows, depth, and the template's decorative style.
+Present the screenshot beautifully within the template's aesthetic — the screenshot is the ONLY content.
+Double-check that NO text of any kind appears anywhere in the generated image.`;
 }

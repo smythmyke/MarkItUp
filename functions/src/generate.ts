@@ -65,6 +65,38 @@ Use the angle to create visual movement and break the static grid.`,
 ];
 
 /**
+ * Scenic variation directives — NO text references at all.
+ * Used when description is empty (scenic mode).
+ */
+const SCENIC_VARIATION_DIRECTIVES: string[] = [
+  // V1: Clean Showcase
+  `LAYOUT DIRECTIVE — CLEAN SHOWCASE:
+The screenshot MUST be the dominant visual element, occupying at least 70-85% of the composition.
+Display the screenshot FLAT or near-flat (maximum 5° tilt). Do NOT place it inside a device frame or mockup.
+The screenshot content must be clearly LEGIBLE — do not shrink, crop, or obscure it.
+Add only minimal decorative elements — a subtle background gradient or border is fine.
+The feel should be clean, focused, and polished — the screenshot tells the story.
+Do NOT add any text, labels, or annotations of any kind.`,
+
+  // V2: Styled Presentation
+  `LAYOUT DIRECTIVE — STYLED PRESENTATION:
+Create a polished visual composition showcasing the screenshot with full decorative treatment.
+The screenshot can be placed inside a device frame, tilted, or styled per the template's visual direction.
+Apply the full visual treatment: gradients, shadows, decorative elements, perspective effects.
+The feel should be eye-catching and social-media-ready — a beautiful presentation of the screenshot.
+Do NOT add any text, labels, or annotations of any kind.`,
+
+  // V3: Dynamic Float
+  `LAYOUT DIRECTIVE — DYNAMIC FLOAT:
+Display the screenshot ROTATED 15-25 degrees, floating dynamically in the composition.
+Add a dramatic drop shadow beneath the angled screenshot for depth and dimension.
+The overall composition follows a DIAGONAL flow from one corner to the opposite.
+The feel should be dynamic, energetic, and visually striking — like a premium product shot.
+Use the angle to create visual movement and break the static grid.
+Do NOT add any text, labels, or annotations of any kind.`,
+];
+
+/**
  * Extract base64 data and media type from a data URL.
  */
 function parseDataUrl(dataUrl: string): { mediaType: string; base64Data: string } {
@@ -195,6 +227,7 @@ async function runGeminiGeneration(
   variationIndex: number,
   aspectRatio?: string,
   imageSize?: string,
+  scenic?: boolean,
 ): Promise<string | null> {
   console.log(`runGeminiGeneration[${variationIndex}]: starting`, {
     mediaType,
@@ -217,7 +250,11 @@ async function runGeminiGeneration(
       },
     });
 
-    const layoutDirective = VARIATION_DIRECTIVES[variationIndex] || VARIATION_DIRECTIVES[0];
+    const directives = scenic ? SCENIC_VARIATION_DIRECTIVES : VARIATION_DIRECTIVES;
+    const layoutDirective = directives[variationIndex] || directives[0];
+    const closingInstruction = scenic
+      ? "Generate the scenic visual as an image. The screenshot provided above should be incorporated into the final visual. Do NOT include any text whatsoever."
+      : "Generate the marketing visual as an image. The screenshot provided above should be incorporated into the final visual.";
 
     const result = await model.generateContent([
       {
@@ -227,7 +264,7 @@ async function runGeminiGeneration(
         },
       },
       {
-        text: `${layoutDirective}\n\n${imagePrompt}\n\nGenerate the marketing visual as an image. The screenshot provided above should be incorporated into the final visual.`,
+        text: `${layoutDirective}\n\n${imagePrompt}\n\n${closingInstruction}`,
       },
     ]);
 
@@ -388,7 +425,7 @@ export async function handleGenerateRequest(
 
   // Run 2 generations in parallel
   const variationPromises = [0, 1].map((i) =>
-    runGeminiGeneration(genAI, base64Data, mediaType, imagePrompt, i, aspectRatio, imageSize)
+    runGeminiGeneration(genAI, base64Data, mediaType, imagePrompt, i, aspectRatio, imageSize, scenic)
   );
 
   const variationResults = await Promise.all(variationPromises);
@@ -675,7 +712,7 @@ export async function handleRegenRequest(
   }
 
   const variation = await runGeminiGeneration(
-    genAI, base64Data, mediaType, imagePrompt, variationIndex, aspectRatio, imageSize
+    genAI, base64Data, mediaType, imagePrompt, variationIndex, aspectRatio, imageSize, scenic
   );
 
   if (!variation) {

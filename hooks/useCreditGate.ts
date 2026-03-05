@@ -25,6 +25,11 @@ export function useCreditGate() {
         const result = await fn();
         return result;
       } catch (err: any) {
+        // User-initiated cancel — don't show error
+        if (err.cancelled) {
+          return undefined;
+        }
+        console.error('[useCreditGate] error:', err);
         if (err.status === 402) {
           setShowInsufficientModal(true);
           setError('No credits remaining. Purchase credits to continue.');

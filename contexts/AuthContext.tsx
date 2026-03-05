@@ -3,7 +3,8 @@ import {
   onAuthStateChanged,
   GoogleAuthProvider,
   signInWithCredential,
-  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   signOut as firebaseSignOut,
   type User,
 } from 'firebase/auth';
@@ -44,6 +45,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(currentUser);
       setLoading(false);
     });
+
+    // Handle redirect result on page load (web only)
+    if (!isExtension) {
+      getRedirectResult(auth).catch((err) => {
+        console.error('Redirect sign-in error:', err);
+        setError(err instanceof Error ? err.message : 'Sign-in failed');
+        setLoading(false);
+      });
+    }
+
     return () => unsubscribe();
   }, []);
 
@@ -79,8 +90,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const credential = GoogleAuthProvider.credential(null, accessToken);
         await signInWithCredential(auth, credential);
       } else {
-        // Web app: use signInWithPopup
-        await signInWithPopup(auth, googleProvider);
+        // Web app: use signInWithRedirect (popup blocked by GitHub Pages COOP header)
+        await signInWithRedirect(auth, googleProvider);
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to sign in with Google';

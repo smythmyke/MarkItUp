@@ -124,6 +124,64 @@ export const presentationTemplates: PresentationTemplate[] = [
     previewUrl: previewUrl('collage_mixed'),
     category: 'creative',
   },
+  {
+    id: 'comic_book',
+    name: 'Comic Book',
+    description: 'Bold outlines, halftone dots, speech bubbles, action lines, primary colors',
+    previewUrl: previewUrl('comic_book'),
+    category: 'creative',
+  },
+  {
+    id: 'vintage_polaroid',
+    name: 'Vintage Polaroid',
+    description: 'Faded film look, white Polaroid frame, warm color cast, handwritten caption',
+    previewUrl: previewUrl('vintage_polaroid'),
+    category: 'creative',
+  },
+  {
+    id: 'vaporwave',
+    name: 'Vaporwave',
+    description: 'Pastel neon gradients, marble busts, glitch art, retro OS windows, surreal',
+    previewUrl: previewUrl('vaporwave'),
+    category: 'creative',
+  },
+
+  // --- Decade-Inspired ---
+  {
+    id: 'psychedelic_60s',
+    name: 'Psychedelic 60s',
+    description: 'Swirling tie-dye colors, wavy lettering, flower power motifs, concert poster',
+    previewUrl: previewUrl('psychedelic_60s'),
+    category: 'decade',
+  },
+  {
+    id: 'disco_70s',
+    name: 'Disco 70s',
+    description: 'Gold accents, mirror ball sparkle, sunburst rays, warm earth tones, groovy',
+    previewUrl: previewUrl('disco_70s'),
+    category: 'decade',
+  },
+  {
+    id: 'synthwave_80s',
+    name: 'Synthwave 80s',
+    description: 'Neon grid, palm trees, VHS scanlines, sunset horizon, chrome text, Miami Vice',
+    previewUrl: previewUrl('synthwave_80s'),
+    category: 'decade',
+  },
+  {
+    id: 'grunge_90s',
+    name: 'Grunge 90s',
+    description: 'Torn paper, distressed type, photocopied aesthetic, zine culture, raw attitude',
+    previewUrl: previewUrl('grunge_90s'),
+    category: 'decade',
+  },
+  {
+    id: 'y2k_2000s',
+    name: 'Y2K 2000s',
+    description: 'Glossy 3D text, iridescent bubbles, chrome orbs, translucent plastic, iPod era',
+    previewUrl: previewUrl('y2k_2000s'),
+    category: 'decade',
+  },
 ];
 
 /** Color accent per template for the visual indicator gradient */
@@ -148,6 +206,15 @@ export const templateColors: Record<string, { from: string; to: string }> = {
   neo_brutalist: { from: '#ef4444', to: '#eab308' },
   retro_futurism: { from: '#d946ef', to: '#06b6d4' },
   collage_mixed: { from: '#f97316', to: '#ec4899' },
+  comic_book: { from: '#ef4444', to: '#3b82f6' },
+  vintage_polaroid: { from: '#d4a574', to: '#f5e6d3' },
+  vaporwave: { from: '#ec4899', to: '#06b6d4' },
+  // Decade
+  psychedelic_60s: { from: '#f97316', to: '#a855f7' },
+  disco_70s: { from: '#d4af37', to: '#f59e0b' },
+  synthwave_80s: { from: '#ec4899', to: '#06b6d4' },
+  grunge_90s: { from: '#4a5e3a', to: '#8b4513' },
+  y2k_2000s: { from: '#93c5fd', to: '#f9a8d4' },
 };
 
 /** Get templates filtered by category */

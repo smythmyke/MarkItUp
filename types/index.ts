@@ -106,13 +106,14 @@ export interface AnnotateResponse {
 
 // --- Presentation Templates ---
 
-export type TemplateCategory = 'product' | 'professional' | 'technical' | 'creative';
+export type TemplateCategory = 'product' | 'professional' | 'technical' | 'creative' | 'decade';
 
 export const TEMPLATE_CATEGORIES: { id: TemplateCategory; label: string }[] = [
   { id: 'product', label: 'Product' },
   { id: 'professional', label: 'Professional' },
   { id: 'technical', label: 'Technical' },
   { id: 'creative', label: 'Creative' },
+  { id: 'decade', label: 'Decade' },
 ];
 
 export interface PresentationTemplate {

@@ -44,8 +44,8 @@ export async function createCreditCheckoutSession(
       packId: pack.id,
       credits: String(pack.credits),
     },
-    success_url: "https://markitup-ext.web.app/success.html",
-    cancel_url: "https://markitup-ext.web.app/cancel.html",
+    success_url: "https://smythmyke.github.io/MarkItUp/?purchase=success",
+    cancel_url: "https://smythmyke.github.io/MarkItUp/?purchase=cancelled",
   });
 
   if (!session.url) {

@@ -129,7 +129,7 @@ async function runTextAnalysis(
   });
 
   const model = genAI.getGenerativeModel({
-    model: "gemini-2.0-flash",
+    model: "gemini-2.5-flash",
     systemInstruction: analysisPrompt,
     generationConfig: {
       responseMimeType: "application/json",
@@ -237,10 +237,13 @@ async function runGeminiGeneration(
 
   try {
     const model = genAI.getGenerativeModel({
-      model: "gemini-2.5-flash-image",
+      model: "gemini-3.1-flash-image-preview",
       generationConfig: {
-        // @ts-expect-error — responseModalities/imageConfig are supported in Gemini 2.0 but not yet in SDK types
+        // @ts-expect-error — responseModalities/imageConfig/thinkingConfig not yet in SDK types
         responseModalities: ["image", "text"],
+        thinkingConfig: {
+          thinkingLevel: "high",
+        },
         ...(aspectRatio || imageSize ? {
           imageConfig: {
             ...(aspectRatio && { aspectRatio }),
@@ -254,7 +257,7 @@ async function runGeminiGeneration(
     const layoutDirective = directives[variationIndex] || directives[0];
     const closingInstruction = scenic
       ? "Generate the scenic visual as an image. The screenshot provided above should be incorporated into the final visual. Do NOT include any text whatsoever."
-      : "Generate the marketing visual as an image. The screenshot provided above should be incorporated into the final visual.";
+      : "Generate the marketing visual as an image. The screenshot provided above should be incorporated into the final visual. Ensure there is no gibberish text, extra floating letters, or misspelled words anywhere in the image.";
 
     const result = await model.generateContent([
       {
@@ -431,7 +434,7 @@ export async function handleGenerateRequest(
   const variationResults = await Promise.all(variationPromises);
 
   // Filter out failures
-  const variations = variationResults.filter((v): v is string => v !== null);
+  let variations = variationResults.filter((v): v is string => v !== null);
 
   if (variations.length === 0) {
     console.error("Generate: All 2 image generation attempts failed", {
@@ -449,12 +452,84 @@ export async function handleGenerateRequest(
     console.warn(`Generate: Only ${variations.length}/2 Gemini variations succeeded`);
   }
 
+  // Step 3: Auto-OCR + retry for text quality (skip for scenic mode)
+  if (!scenic && analysisResult) {
+    console.log("Generate: Step 3 — Auto-OCR text validation");
+    variations = await autoOcrAndRetry(
+      genAI, variations, analysisResult, base64Data, mediaType, imagePrompt, aspectRatio, imageSize
+    );
+  }
+
   console.log(`Generate: complete — ${variations.length} variations produced`);
 
   return {
     text: analysisResult,
     variations,
   };
+}
+
+/**
+ * Auto-OCR each variation and retry any with misspelled text.
+ * Uses correction prompt (not synonym swap) to preserve intended text.
+ */
+async function autoOcrAndRetry(
+  genAI: GoogleGenerativeAI,
+  variations: string[],
+  textAnalysis: TextAnalysisResult,
+  base64Data: string,
+  mediaType: string,
+  imagePrompt: string,
+  aspectRatio?: string,
+  imageSize?: string,
+): Promise<string[]> {
+  // OCR all variations in parallel
+  const ocrPromises = variations.map((v, i) => {
+    console.log(`Auto-OCR[${i}]: starting`);
+    return visionCheckText(genAI, v);
+  });
+  const ocrResults = await Promise.all(ocrPromises);
+
+  // Check each for misspellings and retry bad ones
+  const retryPromises: (Promise<string | null> | null)[] = variations.map(() => null);
+
+  for (let i = 0; i < variations.length; i++) {
+    const ocrText = ocrResults[i];
+    if (!ocrText) {
+      console.warn(`Auto-OCR[${i}]: OCR failed, keeping original`);
+      continue;
+    }
+
+    const misspelled = compareTextAccuracy(ocrText, textAnalysis);
+    if (misspelled.length === 0) {
+      console.log(`Auto-OCR[${i}]: text accurate, no retry needed`);
+      continue;
+    }
+
+    console.log(`Auto-OCR[${i}]: found ${misspelled.length} misspelled words: [${misspelled.join(", ")}], retrying`);
+
+    // Build correction prompt: same image prompt + explicit spelling corrections
+    const correctionSuffix = `\n\nSPELLING CORRECTION — A previous attempt misspelled these words. Ensure EXACT correct spelling:\n${misspelled.map((w) => `- "${w}" must be spelled exactly as shown`).join("\n")}`;
+    const correctedPrompt = imagePrompt + correctionSuffix;
+
+    retryPromises[i] = runGeminiGeneration(
+      genAI, base64Data, mediaType, correctedPrompt, i, aspectRatio, imageSize, false
+    );
+  }
+
+  // Await retries and replace variations that got better results
+  for (let i = 0; i < variations.length; i++) {
+    if (retryPromises[i]) {
+      const retryResult = await retryPromises[i];
+      if (retryResult) {
+        console.log(`Auto-OCR[${i}]: retry succeeded, replacing variation`);
+        variations[i] = retryResult;
+      } else {
+        console.warn(`Auto-OCR[${i}]: retry failed, keeping original`);
+      }
+    }
+  }
+
+  return variations;
 }
 
 // ---- Regen Feature ----
@@ -504,7 +579,7 @@ async function visionCheckText(
 ): Promise<string | null> {
   try {
     const { mediaType, base64Data } = parseDataUrl(imageDataUrl);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
     const result = await model.generateContent([
       { inlineData: { mimeType: mediaType, data: base64Data } },
       { text: "Extract ALL visible text from this image. Return only the raw text, line by line." },
@@ -557,68 +632,6 @@ function compareTextAccuracy(
   }
 
   return [...misspelled];
-}
-
-/**
- * Ask Gemini to replace misspelled words with common, easily-spelled synonyms.
- * Falls back to original text on failure.
- */
-async function generateSynonyms(
-  genAI: GoogleGenerativeAI,
-  misspelledWords: string[],
-  textAnalysis: TextAnalysisResult
-): Promise<TextAnalysisResult> {
-  try {
-    const model = genAI.getGenerativeModel({
-      model: "gemini-2.0-flash",
-      generationConfig: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: SchemaType.OBJECT,
-          properties: {
-            headline: { type: SchemaType.STRING },
-            subHeadline: { type: SchemaType.STRING },
-            highlightTarget: { type: SchemaType.STRING },
-            tooltipText: { type: SchemaType.STRING },
-            marketingCopy: { type: SchemaType.STRING },
-          },
-          required: ["headline", "subHeadline", "highlightTarget", "tooltipText", "marketingCopy"],
-        },
-      },
-    });
-
-    const result = await model.generateContent([
-      {
-        text: `The following marketing text was rendered into an image, but these words were misspelled by the image generator: [${misspelledWords.join(", ")}].
-
-Replace ONLY those misspelled words with common, easily-spelled synonyms that preserve the marketing tone and meaning. Do not change any other words.
-
-Original text:
-- headline: "${textAnalysis.headline}"
-- subHeadline: "${textAnalysis.subHeadline}"
-- highlightTarget: "${textAnalysis.highlightTarget}"
-- tooltipText: "${textAnalysis.tooltipText}"
-- marketingCopy: "${textAnalysis.marketingCopy}"
-
-Return the full updated text as JSON.`,
-      },
-    ]);
-
-    const text = result.response.text();
-    if (!text) return textAnalysis;
-
-    const parsed = JSON.parse(text);
-    const required = ["headline", "subHeadline", "highlightTarget", "tooltipText", "marketingCopy"];
-    for (const field of required) {
-      if (typeof parsed[field] !== "string" || !parsed[field].trim()) {
-        return textAnalysis;
-      }
-    }
-    return parsed as TextAnalysisResult;
-  } catch (err: any) {
-    console.error("generateSynonyms: failed, using original text", err.message);
-    return textAnalysis;
-  }
 }
 
 /**
@@ -682,33 +695,30 @@ export async function handleRegenRequest(
   let imagePrompt: string;
 
   if (scenic) {
-    console.log("Regen: scenic mode — skipping OCR/synonym pipeline");
+    console.log("Regen: scenic mode — skipping OCR pipeline");
     imagePrompt = buildScenicImagePrompt(template);
   } else {
     // Step 1: OCR the generated variation
-    let workingText = { ...textAnalysis };
-
     const ocrText = await visionCheckText(genAI, variationImageDataUrl);
+    imagePrompt = buildImagePrompt(template, textAnalysis);
+
     if (ocrText) {
       // Step 2: Compare for misspellings
-      const misspelled = compareTextAccuracy(ocrText, workingText);
+      const misspelled = compareTextAccuracy(ocrText, textAnalysis);
       console.log(`Regen: found ${misspelled.length} misspelled words`, misspelled);
 
       if (misspelled.length > 0) {
-        // Step 3: Generate synonym replacements
-        workingText = await generateSynonyms(genAI, misspelled, workingText);
-        textCorrected = workingText !== textAnalysis;
-        console.log("Regen: text corrected with synonyms", {
-          original: textAnalysis.headline,
-          updated: workingText.headline,
-        });
+        // Step 3: Add correction prompt instead of synonym swap (preserves intended text)
+        const correctionSuffix = `\n\nSPELLING CORRECTION — A previous attempt misspelled these words. Ensure EXACT correct spelling:\n${misspelled.map((w) => `- "${w}" must be spelled exactly as shown`).join("\n")}`;
+        imagePrompt = imagePrompt + correctionSuffix;
+        textCorrected = true;
+        console.log("Regen: added spelling correction prompt for:", misspelled);
       }
     } else {
       console.warn("Regen: OCR failed, regenerating with original text");
     }
 
-    currentText = workingText;
-    imagePrompt = buildImagePrompt(template, workingText);
+    currentText = textAnalysis;
   }
 
   const variation = await runGeminiGeneration(

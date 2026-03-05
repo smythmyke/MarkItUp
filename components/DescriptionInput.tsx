@@ -8,6 +8,7 @@ interface DescriptionInputProps {
   onGenerate: () => void;
   onRegenerate: () => void;
   onCancel?: () => void;
+  onSignInToGenerate?: () => void;
 }
 
 const MAX_LENGTH = 2000;
@@ -20,19 +21,39 @@ export default function DescriptionInput({
   onGenerate,
   onRegenerate,
   onCancel,
+  onSignInToGenerate,
 }: DescriptionInputProps) {
   const { user } = useAuth();
-  const canGenerate = !!user && !loading;
+  const signedIn = !!user;
+  const canGenerate = signedIn && !loading;
   const charPercent = description.length / MAX_LENGTH;
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
-    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && canGenerate) {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !loading) {
       e.preventDefault();
-      if (hasResult) {
+      if (!signedIn) {
+        onSignInToGenerate?.();
+      } else if (hasResult) {
         onRegenerate();
       } else {
         onGenerate();
       }
+    }
+  }
+
+  function handleGenerateClick() {
+    if (!signedIn) {
+      onSignInToGenerate?.();
+    } else {
+      onGenerate();
+    }
+  }
+
+  function handleRegenerateClick() {
+    if (!signedIn) {
+      onSignInToGenerate?.();
+    } else {
+      onRegenerate();
     }
   }
 
@@ -59,38 +80,34 @@ export default function DescriptionInput({
         )}
       </div>
 
-      {!user && (
-        <p className="text-xs text-ds-text-dim">Sign in to generate visuals</p>
-      )}
-
       <div className="flex gap-2">
         {!hasResult ? (
           <button
             type="button"
-            disabled={!canGenerate}
-            onClick={onGenerate}
+            disabled={loading}
+            onClick={handleGenerateClick}
             className={`flex flex-1 items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-white transition-colors ${
-              canGenerate
+              !loading
                 ? 'bg-ds-accent-emphasis hover:bg-ds-accent'
                 : 'cursor-not-allowed bg-ds-accent-emphasis opacity-50'
             }`}
           >
             {loading && <Spinner />}
-            {loading ? 'Generating...' : 'Generate (1 credit)'}
+            {loading ? 'Generating...' : signedIn ? 'Generate (1 credit)' : 'Sign in & Generate — 5 free credits'}
           </button>
         ) : (
           <button
             type="button"
-            disabled={!canGenerate}
-            onClick={onRegenerate}
+            disabled={loading}
+            onClick={handleRegenerateClick}
             className={`flex flex-1 items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-white transition-colors ${
-              canGenerate
+              !loading
                 ? 'bg-ds-accent-emphasis hover:bg-ds-accent'
                 : 'cursor-not-allowed bg-ds-accent-emphasis opacity-50'
             }`}
           >
             {loading && <Spinner />}
-            {loading ? 'Regenerating...' : 'Regenerate (1 credit)'}
+            {loading ? 'Regenerating...' : signedIn ? 'Regenerate (1 credit)' : 'Sign in & Generate — 5 free credits'}
           </button>
         )}
 

@@ -11,7 +11,101 @@ export interface TemplatePrompts {
   geminiPrompt: string;
 }
 
-const SPELLING_REMINDER = "\n\nCRITICAL: Double-check all spelling. Every word must be spelled correctly.";
+const SPELLING_REMINDER = `
+
+CRITICAL CHARACTER LIMITS — These are hard limits to ensure accurate text rendering:
+- headline: MAXIMUM 25 characters (including spaces). Shorter is better.
+- subHeadline: MAXIMUM 60 characters (including spaces).
+- tooltipText: MAXIMUM 25 characters (including spaces). Shorter is better.
+- highlightTarget and marketingCopy have no character limit.
+Count characters carefully. If your text exceeds these limits, shorten it — use fewer words, abbreviate, or simplify. Never exceed these limits.
+
+CRITICAL: Double-check all spelling. Every word must be spelled correctly.`;
+
+// ---------------------------------------------------------------------------
+// Text rendering rules tailored per template style group.
+// Core spelling enforcement is universal; only the rendering style varies.
+// ---------------------------------------------------------------------------
+
+const TEXT_RULES_BOLD = `CRITICAL TEXT RULES:
+- Render each text element as if physically printed on a sign or banner in bold, clean, sans-serif block letters.
+- Render ALL text EXACTLY as provided — do not alter spelling, capitalization, or wording. Every single letter must be correct.
+- The headline text is: "{headline}" — render this as a prominent, bold sign element.
+- The sub-headline text is: "{subHeadline}" — render this as a secondary printed label.
+- The tooltip text is: "{tooltipText}" — render this as a small printed badge or tag.
+- Ensure there is no gibberish text, extra floating letters, or misspelled words anywhere in the image.`;
+
+const TEXT_RULES_CLEAN = `CRITICAL TEXT RULES:
+- Render each text element in clean, precise, modern sans-serif typography with perfect clarity.
+- Render ALL text EXACTLY as provided — do not alter spelling, capitalization, or wording. Every single letter must be correct.
+- The headline text is: "{headline}" — render this prominently and legibly.
+- The sub-headline text is: "{subHeadline}" — render this in lighter weight below the headline.
+- The tooltip text is: "{tooltipText}" — render this in a clean callout or badge.
+- Ensure there is no gibberish text, extra floating letters, or misspelled words anywhere in the image.`;
+
+const TEXT_RULES_ELEGANT = `CRITICAL TEXT RULES:
+- Render each text element in elegant, refined, light-to-medium weight sans-serif typography with generous letter-spacing.
+- Render ALL text EXACTLY as provided — do not alter spelling, capitalization, or wording. Every single letter must be correct.
+- The headline text is: "{headline}" — render this in elegant, well-spaced typography.
+- The sub-headline text is: "{subHeadline}" — render this in lighter weight with a subtle, muted tone.
+- The tooltip text is: "{tooltipText}" — render this in a refined, understated callout.
+- Ensure there is no gibberish text, extra floating letters, or misspelled words anywhere in the image.`;
+
+const TEXT_RULES_TECHNICAL = `CRITICAL TEXT RULES:
+- Render each text element in clean monospace or technical sans-serif typography, consistent with an engineering or developer aesthetic.
+- Render ALL text EXACTLY as provided — do not alter spelling, capitalization, or wording. Every single letter must be correct.
+- The headline text is: "{headline}" — render this as a technical heading or label.
+- The sub-headline text is: "{subHeadline}" — render this as a specification or description line.
+- The tooltip text is: "{tooltipText}" — render this as a technical annotation or badge.
+- Ensure there is no gibberish text, extra floating letters, or misspelled words anywhere in the image.`;
+
+const TEXT_RULES_WARM = `CRITICAL TEXT RULES:
+- Render each text element in warm, friendly, rounded sans-serif typography that feels approachable and human.
+- Render ALL text EXACTLY as provided — do not alter spelling, capitalization, or wording. Every single letter must be correct.
+- The headline text is: "{headline}" — render this in a warm, inviting style.
+- The sub-headline text is: "{subHeadline}" — render this in a lighter, conversational weight.
+- The tooltip text is: "{tooltipText}" — render this in a soft, rounded callout or pill shape.
+- Ensure there is no gibberish text, extra floating letters, or misspelled words anywhere in the image.`;
+
+const TEXT_RULES_NEON = `CRITICAL TEXT RULES:
+- Render each text element with a chrome, metallic, or neon glow effect consistent with an 80s sci-fi synthwave aesthetic.
+- Render ALL text EXACTLY as provided — do not alter spelling, capitalization, or wording. Every single letter must be correct.
+- The headline text is: "{headline}" — render this in large chrome or neon-glowing letters.
+- The sub-headline text is: "{subHeadline}" — render this in clean neon-colored text.
+- The tooltip text is: "{tooltipText}" — render this in a retro HUD-style badge or element.
+- Ensure there is no gibberish text, extra floating letters, or misspelled words anywhere in the image.`;
+
+const TEXT_RULES_PSYCHEDELIC = `CRITICAL TEXT RULES:
+- Render each text element in wavy, organic, art-nouveau-inspired letterforms — hand-drawn or decorative, never rigid or digital.
+- Render ALL text EXACTLY as provided — do not alter spelling, capitalization, or wording. Every single letter must be correct.
+- The headline text is: "{headline}" — render this in large, flowing, psychedelic lettering with organic curves.
+- The sub-headline text is: "{subHeadline}" — render this in a lighter, groovy decorative style.
+- The tooltip text is: "{tooltipText}" — render this in a rounded, flower-power badge or bubble shape.
+- Ensure there is no gibberish text, extra floating letters, or misspelled words anywhere in the image.`;
+
+const TEXT_RULES_GRUNGE = `CRITICAL TEXT RULES:
+- Render each text element as if stamped, stenciled, or photocopied — distressed, imperfect, raw and authentic.
+- Render ALL text EXACTLY as provided — do not alter spelling, capitalization, or wording. Every single letter must be correct.
+- The headline text is: "{headline}" — render this in bold, distressed block letters as if rubber-stamped or screen-printed.
+- The sub-headline text is: "{subHeadline}" — render this in a lighter, worn typewriter or stencil style.
+- The tooltip text is: "{tooltipText}" — render this on a torn strip of paper, duct tape label, or hand-scrawled tag.
+- Ensure there is no gibberish text, extra floating letters, or misspelled words anywhere in the image.`;
+
+const TEXT_RULES_COMIC = `CRITICAL TEXT RULES:
+- Render each text element in bold uppercase block letters with thick black outlines, consistent with comic book lettering.
+- Render ALL text EXACTLY as provided — do not alter spelling, capitalization, or wording. Every single letter must be correct.
+- The headline text is: "{headline}" — render this in large, bold, outlined comic book letters inside a caption box or burst shape.
+- The sub-headline text is: "{subHeadline}" — render this in a secondary caption box in slightly smaller comic lettering.
+- The tooltip text is: "{tooltipText}" — render this inside a speech bubble or thought bubble with a pointer.
+- Ensure there is no gibberish text, extra floating letters, or misspelled words anywhere in the image.`;
+
+const TEXT_RULES_COLLAGE = `CRITICAL TEXT RULES:
+- Render each text element as if physically placed into a mixed-media collage — bold type on paper strips, labels, or sticker-like elements.
+- Render ALL text EXACTLY as provided — do not alter spelling, capitalization, or wording. Every single letter must be correct.
+- The headline text is: "{headline}" — render this in bold type on a colored paper strip or label.
+- The sub-headline text is: "{subHeadline}" — render this in lighter type on a nearby element.
+- The tooltip text is: "{tooltipText}" — render this on a sticker-like badge or stamp.
+- Ensure there is no gibberish text, extra floating letters, or misspelled words anywhere in the image.`;
 
 const templates: Record<string, TemplatePrompts> = {
   glassmorphic: {
@@ -26,8 +120,8 @@ Return a JSON object with these exact fields:
   "headline": "A bold, concise headline (5-8 words) that captures the main value proposition",
   "subHeadline": "A supporting sentence (10-20 words) that expands on the headline with a specific benefit",
   "highlightTarget": "Description of the UI element to visually emphasize (be specific about location and what it is)",
-  "tooltipText": "A short tooltip or callout (5-12 words) pointing to the key feature",
-  "marketingCopy": "One sentence of supporting marketing copy describing what users can see in this view"
+  "tooltipText": "A short callout phrase (5-12 words) that appears as a tooltip pointing to the highlighted element",
+  "marketingCopy": "One compelling sentence (15-25 words) that could serve as body copy"
 }
 
 Write text that is accurate to what's shown in the screenshot. Do not invent features not visible in the image. Be specific and action-oriented.${SPELLING_REMINDER}`,
@@ -40,7 +134,6 @@ VISUAL STYLE — Glassmorphic:
 - Use a rich gradient backdrop (deep purple → blue → teal) behind everything
 - Apply iridescent/holographic edge highlights on the glass panel
 - Add subtle sparkle/bokeh light accents in the background
-- Use clean, modern sans-serif typography (white text on the glass panel)
 - The screenshot should have a subtle drop shadow and rounded corners
 - Overall feel: premium, modern, SaaS-quality marketing material
 
@@ -51,11 +144,7 @@ LAYOUT:
 - A tooltip/callout arrow or badge highlights the specified UI element
 - The composition should feel balanced and professional
 
-CRITICAL TEXT RULES:
-- Render ALL text EXACTLY as provided — do not alter spelling, capitalization, or wording
-- The headline text is: "{headline}"
-- The sub-headline text is: "{subHeadline}"
-- The tooltip text is: "{tooltipText}"`,
+${TEXT_RULES_CLEAN}`,
   },
 
   clean_minimal: {
@@ -83,22 +172,17 @@ VISUAL STYLE — Clean Minimal:
 - Screenshot placed straight-on (no perspective tilt), centered with generous padding
 - Thin, subtle border (1px light gray) around the screenshot
 - Soft drop shadow beneath the screenshot (subtle, not dramatic)
-- Clean sans-serif typography (dark gray or black text)
 - Minimal decorative elements — let the screenshot speak
 - Optional: thin accent line (blue or brand color) as a subtle design element
 
 LAYOUT:
 - Headline above or below the screenshot in medium-weight font
 - Sub-headline directly below the headline in lighter weight
-- A clean callout arrow or numbered indicator pointing to the highlighted element
+- A clean callout arrow or indicator pointing to the highlighted element
 - Tooltip text in a simple rounded rectangle near the callout
 - Generous whitespace throughout
 
-CRITICAL TEXT RULES:
-- Render ALL text EXACTLY as provided — do not alter spelling, capitalization, or wording
-- The headline text is: "{headline}"
-- The sub-headline text is: "{subHeadline}"
-- The tooltip text is: "{tooltipText}"`,
+${TEXT_RULES_CLEAN}`,
   },
 
   bold_marketing: {
@@ -138,11 +222,7 @@ LAYOUT:
 - Tooltip as a bright badge or callout with an arrow
 - The composition should feel dynamic and energetic
 
-CRITICAL TEXT RULES:
-- Render ALL text EXACTLY as provided — do not alter spelling, capitalization, or wording
-- The headline text is: "{headline}"
-- The sub-headline text is: "{subHeadline}"
-- The tooltip text is: "{tooltipText}"`,
+${TEXT_RULES_BOLD}`,
   },
 
   dark_professional: {
@@ -169,7 +249,6 @@ VISUAL STYLE — Dark Professional:
 - Dark background (#0A0A0F or very dark navy/charcoal)
 - Screenshot displayed with crisp edges, subtle light border, and a refined drop shadow
 - Accent colors: gold (#D4AF37), cyan (#00D4FF), or silver highlights — used sparingly
-- Elegant, refined typography — medium-weight sans-serif, well-spaced
 - Subtle gradient overlays or vignette effects
 - Optional: thin gold or cyan accent lines as design elements
 - Overall feel: premium, executive, boardroom-ready
@@ -182,11 +261,7 @@ LAYOUT:
 - Tooltip in a dark rounded rectangle with accent border
 - The composition should feel restrained and sophisticated
 
-CRITICAL TEXT RULES:
-- Render ALL text EXACTLY as provided — do not alter spelling, capitalization, or wording
-- The headline text is: "{headline}"
-- The sub-headline text is: "{subHeadline}"
-- The tooltip text is: "{tooltipText}"`,
+${TEXT_RULES_ELEGANT}`,
   },
 
   documentation: {
@@ -194,43 +269,38 @@ CRITICAL TEXT RULES:
     name: "Documentation",
     analysisPrompt: `You are a UX writer creating clear instructional copy for a help document or onboarding guide.
 
-Analyze the screenshot and the user's description. Create copy that helps users understand a step or feature — this will be used in help docs, onboarding flows, or how-to guides.
+Analyze the screenshot and the user's description. Create copy that helps users understand a feature — this will be used in help docs, onboarding flows, or how-to guides.
 
 Return a JSON object with these exact fields:
 {
   "headline": "A clear step title or feature name (3-7 words) — instructional and direct",
   "subHeadline": "A helpful instruction or explanation (10-20 words) telling the user what to do or what they're seeing",
-  "highlightTarget": "Description of the UI element the user needs to interact with (be very specific about location and type)",
+  "highlightTarget": "Description of the single most important UI element the user needs to see (be very specific about location and type)",
   "tooltipText": "A direct instruction or label (4-10 words) for the highlighted element, e.g. 'Click here to save'",
-  "marketingCopy": "One sentence providing context about why this step matters or what happens next"
+  "marketingCopy": "One sentence providing context about why this feature matters or what happens next"
 }
 
 Be direct and instructional. Use imperative mood ("Click", "Select", "Enter") where appropriate. Prioritize clarity over cleverness.${SPELLING_REMINDER}`,
 
-    geminiPrompt: `Create a clean documentation-style visual with numbered callouts using the provided screenshot and text.
+    geminiPrompt: `Create a clean documentation-style visual with a single clear callout using the provided screenshot and text.
 
 VISUAL STYLE — Documentation:
 - Light, neutral background (white or light warm gray)
 - Screenshot displayed straight-on, full-width or near-full-width
-- Numbered callout circles (1, 2, 3) in a consistent accent color (blue or teal)
-- Clean arrows pointing from callouts to specific UI elements
-- Step indicator badges with numbers
+- A single callout indicator in a consistent accent color (blue or teal)
+- A clean arrow pointing from the callout to the specific UI element
 - Neutral color palette — blue accent for interactive elements, gray for chrome
 - Overall feel: clear, instructional, help-doc quality
 
 LAYOUT:
 - Headline as a section header above the screenshot
 - Sub-headline as instructional text below the headline
-- Screenshot with numbered callout overlays pointing to key elements
-- The highlighted target gets the primary callout (number 1) with the tooltip text
-- Additional numbered callouts can point to related UI elements
+- Screenshot with ONE single callout overlay pointing to the highlighted element
+- The callout uses the tooltip text as its label
+- Do NOT add multiple numbered steps, annotations, or extra callouts — keep it to ONE
 - Clean spacing between all elements
 
-CRITICAL TEXT RULES:
-- Render ALL text EXACTLY as provided — do not alter spelling, capitalization, or wording
-- The headline text is: "{headline}"
-- The sub-headline text is: "{subHeadline}"
-- The tooltip text is: "{tooltipText}"`,
+${TEXT_RULES_CLEAN}`,
   },
 
   // --- NEW TEMPLATES ---
@@ -261,7 +331,6 @@ VISUAL STYLE — Device Mockup:
 - Use a smooth gradient background (cool blues, purples, or dark neutrals)
 - Add subtle reflections on the device screen surface
 - Soft ambient shadow beneath the device
-- Clean, modern sans-serif typography outside the device frame
 - Overall feel: premium product showcase, Apple-style marketing
 
 LAYOUT:
@@ -272,11 +341,7 @@ LAYOUT:
 - Tooltip text in a clean rounded rectangle near the callout
 - Balanced composition with generous padding
 
-CRITICAL TEXT RULES:
-- Render ALL text EXACTLY as provided — do not alter spelling, capitalization, or wording
-- The headline text is: "{headline}"
-- The sub-headline text is: "{subHeadline}"
-- The tooltip text is: "{tooltipText}"`,
+${TEXT_RULES_CLEAN}`,
   },
 
   gradient_noise: {
@@ -304,7 +369,6 @@ VISUAL STYLE — Gradient Noise:
 - Apply a subtle grain/noise texture overlay across the entire image for tactile depth
 - Screenshot displayed with rounded corners and a soft shadow
 - Organic, slightly rounded shapes as decorative accents (blobs, circles)
-- Warm, friendly sans-serif typography
 - Overall feel: indie, crafted, Dribbble-quality design
 
 LAYOUT:
@@ -315,11 +379,7 @@ LAYOUT:
 - Tooltip text in a rounded pill-shaped container
 - Organic, slightly asymmetric composition
 
-CRITICAL TEXT RULES:
-- Render ALL text EXACTLY as provided — do not alter spelling, capitalization, or wording
-- The headline text is: "{headline}"
-- The sub-headline text is: "{subHeadline}"
-- The tooltip text is: "{tooltipText}"`,
+${TEXT_RULES_WARM}`,
   },
 
   app_store: {
@@ -347,7 +407,6 @@ VISUAL STYLE — App Store:
 - Clean, solid or subtle gradient background behind the phone
 - A feature badge or pill label near the top or bottom of the composition
 - Bold, large headline text above the phone
-- Clean sans-serif typography optimized for readability at small sizes
 - Optional: subtle confetti, stars, or accent shapes for energy
 - Overall feel: polished app store listing, ready for Apple App Store or Google Play
 
@@ -359,11 +418,7 @@ LAYOUT:
 - Tooltip text inside the badge
 - Clean, vertically stacked composition
 
-CRITICAL TEXT RULES:
-- Render ALL text EXACTLY as provided — do not alter spelling, capitalization, or wording
-- The headline text is: "{headline}"
-- The sub-headline text is: "{subHeadline}"
-- The tooltip text is: "{tooltipText}"`,
+${TEXT_RULES_BOLD}`,
   },
 
   cinematic_aurora: {
@@ -391,7 +446,6 @@ VISUAL STYLE — Cinematic Aurora:
 - Flowing aurora borealis color washes (green → teal → purple → pink) across the background
 - Subtle floating particle effects or tiny light dots
 - Screenshot with a soft luminous glow border
-- Elegant, light-weight sans-serif typography (white or very light)
 - Subtle lens flare or light bloom effects
 - Overall feel: cinematic, premium, otherworldly, luxury tech
 
@@ -403,11 +457,7 @@ LAYOUT:
 - Tooltip text in a translucent dark panel with glow border
 - The composition should feel expansive and atmospheric
 
-CRITICAL TEXT RULES:
-- Render ALL text EXACTLY as provided — do not alter spelling, capitalization, or wording
-- The headline text is: "{headline}"
-- The sub-headline text is: "{subHeadline}"
-- The tooltip text is: "{tooltipText}"`,
+${TEXT_RULES_ELEGANT}`,
   },
 
   corporate_clean: {
@@ -435,7 +485,6 @@ VISUAL STYLE — Corporate Clean:
 - Corporate blue (#1e40af) and slate gray (#475569) as primary colors
 - Screenshot placed in a structured grid layout with clean alignment
 - Subtle geometric patterns or thin line accents in the background
-- Professional sans-serif typography (medium weight, well-spaced)
 - Clean divider lines or subtle card boundaries
 - Overall feel: polished enterprise presentation, boardroom-ready
 
@@ -448,11 +497,7 @@ LAYOUT:
 - Tooltip text in a clean, bordered rectangle
 - Generous whitespace and alignment
 
-CRITICAL TEXT RULES:
-- Render ALL text EXACTLY as provided — do not alter spelling, capitalization, or wording
-- The headline text is: "{headline}"
-- The sub-headline text is: "{subHeadline}"
-- The tooltip text is: "{tooltipText}"`,
+${TEXT_RULES_CLEAN}`,
   },
 
   bento_grid: {
@@ -480,7 +525,6 @@ VISUAL STYLE — Bento Grid:
 - The screenshot fills the largest tile (hero tile, roughly 60% of the composition)
 - Smaller tiles contain text, feature labels, or decorative accents
 - Subtle borders between tiles, slightly rounded corners (12-16px radius)
-- Clean sans-serif typography, white text on dark tiles or dark text on light tiles
 - Consistent padding within each tile
 - Overall feel: modern product page, Apple/Linear-style bento layout
 
@@ -492,11 +536,7 @@ LAYOUT:
 - 4-6 tiles total in an asymmetric but balanced grid arrangement
 - A highlight or accent border on the tile containing the key feature
 
-CRITICAL TEXT RULES:
-- Render ALL text EXACTLY as provided — do not alter spelling, capitalization, or wording
-- The headline text is: "{headline}"
-- The sub-headline text is: "{subHeadline}"
-- The tooltip text is: "{tooltipText}"`,
+${TEXT_RULES_BOLD}`,
   },
 
   blueprint: {
@@ -524,7 +564,6 @@ VISUAL STYLE — Blueprint:
 - White gridlines creating an engineering paper grid pattern
 - Screenshot displayed with technical annotation lines and markers
 - Right-angle connector lines from labels to UI elements (like technical diagrams)
-- Monospace or technical sans-serif typography in white or light blue
 - Dimension lines, measurement markers, or specification boxes
 - Overall feel: engineering blueprint, technical schematic, developer documentation
 
@@ -532,16 +571,11 @@ LAYOUT:
 - Screenshot centered with technical annotation overlay
 - Headline as a title block label (top-left or top-center, bordered)
 - Sub-headline as a specification description below the title
-- Right-angle leader lines connecting callout labels to specific UI elements
-- The highlighted target gets the primary annotation with the tooltip text
+- A single right-angle leader line connecting the tooltip text to the highlighted UI element
 - Coordinate markers or dimension indicators as decorative elements
 - Clean, precise alignment throughout
 
-CRITICAL TEXT RULES:
-- Render ALL text EXACTLY as provided — do not alter spelling, capitalization, or wording
-- The headline text is: "{headline}"
-- The sub-headline text is: "{subHeadline}"
-- The tooltip text is: "{tooltipText}"`,
+${TEXT_RULES_TECHNICAL}`,
   },
 
   terminal_dark: {
@@ -569,25 +603,20 @@ VISUAL STYLE — Terminal Dark:
 - Terminal window chrome: title bar with red/yellow/green dots, subtle border
 - Screenshot displayed inside a terminal-like frame with rounded corners
 - Green (#22c55e) or amber (#f59e0b) accent colors for highlights
-- Monospace typography (like a code editor) for labels and callouts
 - Code comment style annotations (// or /* */ format for decorative text)
 - Subtle scan lines or CRT-like texture overlay (optional)
 - Overall feel: developer tool, hacker aesthetic, VS Code meets marketing
 
 LAYOUT:
 - Screenshot inside a terminal/editor window frame
-- Headline in monospace, styled like a terminal command or heading comment
+- Headline styled like a terminal command or heading comment
 - Sub-headline below in lighter monospace, like a code description
-- Callout annotations styled as code comments pointing to UI elements
+- Callout annotation styled as a code comment pointing to the highlighted element
 - Tooltip text in a monospace badge or inline comment style
 - The highlighted element gets a green/amber glow border or underline
 - Dark, focused composition with minimal decoration
 
-CRITICAL TEXT RULES:
-- Render ALL text EXACTLY as provided — do not alter spelling, capitalization, or wording
-- The headline text is: "{headline}"
-- The sub-headline text is: "{subHeadline}"
-- The tooltip text is: "{tooltipText}"`,
+${TEXT_RULES_TECHNICAL}`,
   },
 
   neo_brutalist: {
@@ -617,7 +646,6 @@ VISUAL STYLE — Neo Brutalist:
 - Screenshot with a thick black border and slight rotation (2-5°)
 - Offset/drop shadows in solid black (shifted 4-6px down-right)
 - Raw, angular layout — intentionally imperfect and energetic
-- Bold, heavy-weight sans-serif typography (almost condensed)
 - Overall feel: indie web, brutalist design, raw energy
 
 LAYOUT:
@@ -629,11 +657,7 @@ LAYOUT:
 - Overlapping elements allowed — embrace the controlled chaos
 - High contrast, maximum visual impact
 
-CRITICAL TEXT RULES:
-- Render ALL text EXACTLY as provided — do not alter spelling, capitalization, or wording
-- The headline text is: "{headline}"
-- The sub-headline text is: "{subHeadline}"
-- The tooltip text is: "{tooltipText}"`,
+${TEXT_RULES_BOLD}`,
   },
 
   retro_futurism: {
@@ -659,7 +683,6 @@ Write dramatic, cinematic copy. Think Blade Runner meets product marketing.${SPE
 VISUAL STYLE — Retro Futurism:
 - Dark background (#0a0a1a) with a perspective grid floor receding to a vanishing point
 - Neon color palette: hot pink (#ec4899), electric cyan (#06b6d4), chrome silver
-- Chrome/metallic text effects on the headline (reflective, shiny)
 - Screenshot with a neon glow border (pink or cyan)
 - Scan lines or VHS-style subtle texture overlay
 - Sun or geometric shape on the horizon line
@@ -674,11 +697,7 @@ LAYOUT:
 - The composition should feel like a movie poster or album cover
 - Dramatic, symmetrical or slightly dynamic arrangement
 
-CRITICAL TEXT RULES:
-- Render ALL text EXACTLY as provided — do not alter spelling, capitalization, or wording
-- The headline text is: "{headline}"
-- The sub-headline text is: "{subHeadline}"
-- The tooltip text is: "{tooltipText}"`,
+${TEXT_RULES_NEON}`,
   },
 
   collage_mixed: {
@@ -706,25 +725,352 @@ VISUAL STYLE — Collage Mixed:
 - Screenshot displayed as if it's a photo/printout layered into the collage
 - Torn paper edges, tape strips (washi tape or masking tape) holding elements
 - Overlapping layers: screenshot, text blocks, decorative elements
-- Mix of clean typography and handwritten-style annotations
 - Sticker-like badges, stamps, or circular labels
 - Color palette: warm neutrals with pops of accent color
 - Overall feel: creative agency, editorial design, mixed-media art
 
 LAYOUT:
 - Screenshot slightly rotated and "taped" onto the composition
-- Headline in bold type, possibly on a colored paper strip or label
-- Sub-headline in lighter type or handwritten style nearby
+- Headline on a colored paper strip or label
+- Sub-headline in lighter type nearby
 - Other elements layered around: arrows, circles, decorative scraps
 - The highlighted element gets a hand-drawn circle or arrow annotation
 - Tooltip text on a sticker-like badge or stamp element
 - Intentionally layered and textured — not perfectly aligned
 
-CRITICAL TEXT RULES:
-- Render ALL text EXACTLY as provided — do not alter spelling, capitalization, or wording
-- The headline text is: "{headline}"
-- The sub-headline text is: "{subHeadline}"
-- The tooltip text is: "{tooltipText}"`,
+${TEXT_RULES_COLLAGE}`,
+  },
+
+  // --- Decade-Inspired ---
+
+  psychedelic_60s: {
+    id: "psychedelic_60s",
+    name: "Psychedelic 60s",
+    analysisPrompt: `You are a counterculture poster artist creating groovy, expressive copy for a psychedelic visual.
+
+Analyze the screenshot and the user's description. Create copy that channels the spirit of the 1960s — peace, love, freedom, and mind-expansion. This will appear in a swirling, colorful psychedelic poster composition.
+
+Return a JSON object with these exact fields:
+{
+  "headline": "A groovy, expressive headline (3-7 words) — peace-and-love energy, flower power vibes",
+  "subHeadline": "A flowing, evocative sentence (10-18 words) with 60s counterculture energy",
+  "highlightTarget": "Description of the UI element to feature in the psychedelic composition (be specific)",
+  "tooltipText": "A short, groovy callout (4-10 words) — peace sign or flower badge energy",
+  "marketingCopy": "One sentence that makes the product feel like a trip into the future"
+}
+
+Write with 60s energy. Think concert posters, Woodstock, flower power. Expressive and free.${SPELLING_REMINDER}`,
+
+    geminiPrompt: `Create a psychedelic 1960s-inspired marketing visual using the provided screenshot and text.
+
+VISUAL STYLE — Psychedelic 60s:
+- Swirling, melting color gradients: orange, purple, hot pink, yellow, lime green
+- Organic, flowing shapes — paisley patterns, mandalas, flowers
+- Wavy, distorted borders and edges — nothing straight or rigid
+- Tie-dye or liquid color blending effects in the background
+- Peace symbols, flowers, or sunburst motifs as decorative accents
+- Overall feel: Woodstock concert poster, 60s counterculture art, Peter Max style
+
+LAYOUT:
+- Screenshot placed within a flowing, organic frame with melting/wavy edges
+- Headline in large, wavy psychedelic lettering — organic and decorative
+- Sub-headline below in a lighter groovy style
+- A flower-shaped or peace-sign badge highlighting the target UI element
+- Tooltip text inside the badge
+- Swirling decorative elements filling the space around the screenshot
+- The composition should feel alive and flowing
+
+${TEXT_RULES_PSYCHEDELIC}`,
+  },
+
+  disco_70s: {
+    id: "disco_70s",
+    name: "Disco 70s",
+    analysisPrompt: `You are a disco-era graphic designer creating funky, glamorous copy for a 1970s-inspired visual.
+
+Analyze the screenshot and the user's description. Create copy that channels Saturday Night Fever — glamorous, funky, and golden. This will appear in a disco-era composition with metallic accents and warm earth tones.
+
+Return a JSON object with these exact fields:
+{
+  "headline": "A funky, glamorous headline (3-7 words) — disco energy, Saturday Night Fever vibes",
+  "subHeadline": "A smooth, confident sentence (10-18 words) with 70s swagger and glamour",
+  "highlightTarget": "Description of the UI element to spotlight with a disco glow (be specific)",
+  "tooltipText": "A short, groovy callout (4-10 words) — funky and confident",
+  "marketingCopy": "One sentence that makes the product feel like the life of the party"
+}
+
+Write with 70s swagger. Think disco balls, gold chains, funk music. Smooth and confident.${SPELLING_REMINDER}`,
+
+    geminiPrompt: `Create a disco 1970s-inspired marketing visual using the provided screenshot and text.
+
+VISUAL STYLE — Disco 70s:
+- Warm color palette: burnt orange, brown, gold, mustard, teal, cream
+- Metallic gold and silver accents — mirror ball reflections, sparkle highlights
+- Sunburst or radial ray patterns emanating from the center or screenshot
+- Rounded, bubble-style decorative typography and shapes
+- Subtle halftone or film grain texture overlay
+- Geometric patterns: circles, arches, chevrons in retro earth tones
+- Overall feel: disco poster, 70s album cover, Saturday Night Fever glamour
+
+LAYOUT:
+- Screenshot framed within a rounded or arch-shaped border with gold edge
+- Sunburst rays radiating behind the screenshot
+- Headline in rounded, bubble-style or inline-shadow lettering above the screenshot
+- Sub-headline below in a lighter retro font style
+- A gold or sparkle-accented callout highlighting the target UI element
+- Tooltip text in a rounded, retro-styled badge
+- Warm, symmetrical composition with groovy energy
+
+${TEXT_RULES_NEON}`,
+  },
+
+  synthwave_80s: {
+    id: "synthwave_80s",
+    name: "Synthwave 80s",
+    analysisPrompt: `You are an 80s pop culture creative director creating radical, high-energy copy for a synthwave visual.
+
+Analyze the screenshot and the user's description. Create copy that channels Miami Vice, Top Gun, and arcade culture — neon-drenched, high-energy, and totally radical. This will appear in a full synthwave 80s composition.
+
+Return a JSON object with these exact fields:
+{
+  "headline": "A radical, high-energy headline (3-7 words) — 80s action movie tagline energy",
+  "subHeadline": "An exciting sentence (10-18 words) dripping with 80s confidence and neon energy",
+  "highlightTarget": "Description of the UI element to spotlight with neon glow (be specific)",
+  "tooltipText": "A short, punchy callout (4-10 words) — arcade or VHS box art energy",
+  "marketingCopy": "One sentence that makes the product feel like the hottest thing since sliced bread"
+}
+
+Write like an 80s action movie trailer. Neon, chrome, power. Totally radical.${SPELLING_REMINDER}`,
+
+    geminiPrompt: `Create an 80s synthwave-inspired marketing visual using the provided screenshot and text.
+
+VISUAL STYLE — Synthwave 80s:
+- Dark purple/navy background with neon accents: hot pink, electric cyan, chrome
+- Perspective grid floor receding to a sunset horizon line
+- Sunset gradient on the horizon: orange → pink → purple
+- Palm tree silhouettes flanking the composition
+- VHS scanline texture and chromatic aberration effects
+- Neon tube-style glowing outlines on key elements
+- Chrome, metallic reflections on text and borders
+- Overall feel: Miami Vice, Tron, arcade cabinet art, VHS cover
+
+LAYOUT:
+- Screenshot floating above the grid with neon pink/cyan glow border
+- Headline in large chrome or neon-glowing letters above the screenshot
+- Sub-headline below in clean neon-colored text
+- Palm trees or geometric shapes framing the sides
+- A neon-glow highlight on the target UI element
+- Tooltip text in a retro VHS-style badge or HUD element
+- Dramatic, symmetrical composition — cinematic and powerful
+
+${TEXT_RULES_NEON}`,
+  },
+
+  grunge_90s: {
+    id: "grunge_90s",
+    name: "Grunge 90s",
+    analysisPrompt: `You are a 90s zine maker creating raw, anti-establishment copy for a grunge-inspired visual.
+
+Analyze the screenshot and the user's description. Create copy with 90s attitude — raw, authentic, anti-corporate. This will appear in a grungy, distressed composition that looks photocopied and DIY.
+
+Return a JSON object with these exact fields:
+{
+  "headline": "A raw, direct headline (3-6 words) — grunge attitude, no corporate polish",
+  "subHeadline": "A blunt, authentic sentence (8-15 words) with 90s alternative energy",
+  "highlightTarget": "Description of the UI element to mark up with a hand-drawn circle or arrow (be specific)",
+  "tooltipText": "A short, raw label (3-8 words) — like a hand-scrawled note or stamp",
+  "marketingCopy": "One sentence with attitude that makes the product feel underground and authentic"
+}
+
+Write raw and real. Think zines, Nirvana, skateboard culture. Anti-polish, pro-authenticity.${SPELLING_REMINDER}`,
+
+    geminiPrompt: `Create a 90s grunge-inspired marketing visual using the provided screenshot and text.
+
+VISUAL STYLE — Grunge 90s:
+- Muted, dark palette: dark green, maroon, dirty yellow, black, gray
+- Heavy distressed textures: torn paper, coffee stains, photocopier artifacts
+- Scratch marks, ink splatters, and smudges across the composition
+- Screenshot displayed as if photocopied or printed on rough paper — slightly degraded
+- Duct tape, staples, or safety pins holding elements together
+- Stencil or rubber stamp motifs as decorative elements
+- Overall feel: underground zine, punk flyer, 90s alternative culture
+
+LAYOUT:
+- Screenshot slightly askew, as if taped or stapled onto a wall or notebook
+- Headline in bold, distressed stencil or block letters — raw and impactful
+- Sub-headline in typewriter-style text below
+- A hand-drawn circle, arrow, or X marking the highlighted element
+- Tooltip text on a torn strip of paper or duct tape label
+- Overlapping layers of torn paper, stickers, and scrawl around the edges
+- The composition should feel DIY, authentic, and deliberately imperfect
+
+${TEXT_RULES_GRUNGE}`,
+  },
+
+  y2k_2000s: {
+    id: "y2k_2000s",
+    name: "Y2K 2000s",
+    analysisPrompt: `You are a Y2K-era web designer creating futuristic, glossy copy for a millennium-inspired visual.
+
+Analyze the screenshot and the user's description. Create copy that channels the year 2000 — glossy, optimistic, digital-futuristic. This will appear in a Y2K aesthetic with 3D effects, translucent plastic, and iridescent colors.
+
+Return a JSON object with these exact fields:
+{
+  "headline": "A glossy, futuristic headline (3-7 words) — millennium optimism, digital age energy",
+  "subHeadline": "A bright, optimistic sentence (10-18 words) with Y2K tech-utopian confidence",
+  "highlightTarget": "Description of the UI element to highlight with a glossy 3D effect (be specific)",
+  "tooltipText": "A short, upbeat callout (4-10 words) — iPod-era clean and cool",
+  "marketingCopy": "One sentence that makes the product feel like the next big thing of the new millennium"
+}
+
+Write with millennium optimism. Think iMac, iPod, early web. Glossy, futuristic, cool.${SPELLING_REMINDER}`,
+
+    geminiPrompt: `Create a Y2K 2000s-inspired marketing visual using the provided screenshot and text.
+
+VISUAL STYLE — Y2K 2000s:
+- Glossy, bubbly 3D effects — inflatable, translucent plastic aesthetic
+- Iridescent and holographic color shifts: baby blue, pink, lilac, lime, silver
+- Chrome and metallic 3D elements — orbs, tubes, abstract shapes
+- Translucent or frosted overlays with rainbow light refraction
+- Subtle star sparkles, lens flares, and gloss highlights
+- Clean white or soft gradient background with floating 3D objects
+- Overall feel: early iPod ads, iMac G3, Britney Spears album art, early web design
+
+LAYOUT:
+- Screenshot displayed in a glossy, rounded frame with 3D depth and reflection
+- Headline in clean, glossy 3D-extruded text — bubbly and futuristic
+- Sub-headline below in a lighter, precise style
+- Floating chrome orbs, translucent bubbles, or 3D stars as accents
+- A glossy badge or bubble callout highlighting the target UI element
+- Tooltip text inside the glossy callout
+- Clean, open composition with lots of white space and floating 3D elements
+
+${TEXT_RULES_CLEAN}`,
+  },
+
+  // --- Additional Creative ---
+
+  comic_book: {
+    id: "comic_book",
+    name: "Comic Book",
+    analysisPrompt: `You are a comic book letterer and cover artist creating punchy, action-packed copy for a comic-style visual.
+
+Analyze the screenshot and the user's description. Create copy with comic book energy — bold, dramatic, action-packed. This will appear in a classic comic book panel composition with halftone dots and bold outlines.
+
+Return a JSON object with these exact fields:
+{
+  "headline": "A bold, action-packed headline (3-6 words) — comic book cover energy, ALL CAPS feel",
+  "subHeadline": "A dramatic sentence (8-15 words) like a comic book narrator caption",
+  "highlightTarget": "Description of the UI element to feature as the hero element of the panel (be specific)",
+  "tooltipText": "A short, punchy exclamation (3-8 words) — like a speech bubble or action word",
+  "marketingCopy": "One dramatic sentence like a comic book blurb that builds excitement"
+}
+
+Write like a comic book. Bold, dramatic, action words. Think Marvel covers, manga splash pages.${SPELLING_REMINDER}`,
+
+    geminiPrompt: `Create a comic book-style marketing visual using the provided screenshot and text.
+
+VISUAL STYLE — Comic Book:
+- Bold black outlines (3-4px) around ALL elements
+- Ben-Day dots (halftone pattern) as background texture
+- Primary color palette: bright red, blue, yellow + black + white
+- Action lines / speed lines radiating from the screenshot
+- Starburst / explosion shapes behind key elements
+- Panel border framing the composition like a comic page
+- Overall feel: classic Marvel/DC comic book cover, pop art, Roy Lichtenstein
+
+LAYOUT:
+- Screenshot displayed as the hero panel with thick black border
+- Headline in large, bold, outlined comic book lettering in a burst or banner shape
+- Sub-headline in a narrator caption box (yellow/cream rectangle with black border)
+- Action lines or speed lines radiating from the highlighted element
+- A speech bubble or thought bubble containing the tooltip text, pointing to the UI element
+- Starburst shapes, "POW" style accents, or comic panel gutters as decorative elements
+- Dynamic, diagonal composition with high energy and movement
+
+${TEXT_RULES_COMIC}`,
+  },
+
+  vintage_polaroid: {
+    id: "vintage_polaroid",
+    name: "Vintage Polaroid",
+    analysisPrompt: `You are a nostalgic photographer creating warm, personal copy for a vintage photo-style visual.
+
+Analyze the screenshot and the user's description. Create copy that feels personal, authentic, and nostalgic — like a treasured photo with a handwritten note. This will appear in a warm, faded Polaroid composition.
+
+Return a JSON object with these exact fields:
+{
+  "headline": "A warm, personal headline (3-7 words) — like writing on the back of a photo",
+  "subHeadline": "A nostalgic, heartfelt sentence (10-18 words) that feels personal and authentic",
+  "highlightTarget": "Description of the UI element to highlight with a warm spotlight (be specific)",
+  "tooltipText": "A short, warm note (4-10 words) — like a handwritten annotation",
+  "marketingCopy": "One sentence that makes the product feel like a treasured memory"
+}
+
+Write warm and personal. Think photo albums, handwritten notes, nostalgic memories.${SPELLING_REMINDER}`,
+
+    geminiPrompt: `Create a vintage Polaroid-style marketing visual using the provided screenshot and text.
+
+VISUAL STYLE — Vintage Polaroid:
+- Warm, faded color cast — slightly desaturated with amber/sepia undertones
+- Classic Polaroid frame: white border (thick at bottom for caption), slight shadow
+- Film grain texture overlay across the image
+- Subtle vignette darkening the corners
+- Warm spotlight or light leak effects
+- Soft, slightly out-of-focus background with bokeh dots
+- Overall feel: nostalgic instant photo, vintage film, personal and authentic
+
+LAYOUT:
+- Screenshot placed inside a Polaroid-style white frame, slightly tilted (2-5°)
+- Headline as handwritten-style text on or below the Polaroid's white bottom border
+- Sub-headline in a softer handwritten or casual style nearby
+- A warm glow or soft circle highlighting the target UI element
+- Tooltip text in a rounded, warm-colored callout or handwritten annotation
+- Additional Polaroid frames or scattered photos as background texture (optional)
+- The composition should feel personal, warm, and curated
+
+${TEXT_RULES_WARM}`,
+  },
+
+  vaporwave: {
+    id: "vaporwave",
+    name: "Vaporwave",
+    analysisPrompt: `You are a vaporwave aesthetic curator creating dreamy, ironic, internet-nostalgia copy for a surreal visual.
+
+Analyze the screenshot and the user's description. Create copy that channels vaporwave — dreamy, surreal, with a touch of irony and internet nostalgia. This will appear in a pastel-neon, glitch-art composition.
+
+Return a JSON object with these exact fields:
+{
+  "headline": "A dreamy, surreal headline (3-7 words) — vaporwave aesthetic, slightly ironic and ethereal",
+  "subHeadline": "A flowing, dreamlike sentence (10-18 words) with internet nostalgia and surreal beauty",
+  "highlightTarget": "Description of the UI element to feature in the surreal composition (be specific)",
+  "tooltipText": "A short, aesthetic callout (4-10 words) — dreamy and digital",
+  "marketingCopy": "One sentence that makes the product feel like a beautiful digital dream"
+}
+
+Write dreamy and aesthetic. Think Windows 95, marble busts, palm trees, pink sunsets. Surreal and beautiful.${SPELLING_REMINDER}`,
+
+    geminiPrompt: `Create a vaporwave-inspired marketing visual using the provided screenshot and text.
+
+VISUAL STYLE — Vaporwave:
+- Pastel-neon gradient palette: pink, teal, purple, soft lavender, warm peach
+- Greek/Roman marble bust or statue element as a decorative accent
+- Checkerboard floor or Windows 95-style UI elements in the background
+- Glitch effects, pixel sorting, or chromatic aberration distortion
+- Palm trees, dolphins, or geometric shapes as surreal floating elements
+- VHS tracking lines, scan distortion, or old-school computer window frames
+- Overall feel: A E S T H E T I C, internet nostalgia, surreal dream, Macintosh Plus
+
+LAYOUT:
+- Screenshot displayed in a retro computer window frame or with glitch-border effect
+- Headline in clean, wide-spaced text with pink/teal gradient or chrome sheen
+- Sub-headline below in a softer, dreamy style
+- Floating surreal elements around the composition (busts, palms, geometric shapes)
+- A glowing or iridescent callout highlighting the target UI element
+- Tooltip text in a retro-styled window or pastel badge
+- Dreamy, spacious composition with intentional surreal juxtaposition
+
+${TEXT_RULES_NEON}`,
   },
 };
 

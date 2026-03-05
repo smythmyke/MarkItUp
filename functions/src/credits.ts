@@ -9,7 +9,7 @@ export const CREDIT_PACKS = [
   { id: "pack_100", credits: 100, price: 1500, label: "100 credits", perCredit: "$0.15" },
 ] as const;
 
-const FREE_CREDITS_ON_SIGNUP = 3;
+const FREE_CREDITS_ON_SIGNUP = 5;
 
 interface CreditDoc {
   balance: number;
@@ -51,7 +51,7 @@ export async function getBalance(
   };
 }
 
-// Initialize credits for a new user — grants 3 free credits on first sign-in
+// Initialize credits for a new user — grants 5 free credits on first sign-in
 export async function initCredits(
   db: FirebaseFirestore.Firestore,
   uid: string

@@ -53,7 +53,8 @@ function Editor() {
   const abortRef = useRef<AbortController | null>(null);
   const { execute, loading: generating, error: gateError, showInsufficientModal, dismissModal } = useCreditGate();
   const { showToast } = useToast();
-  const { error: authError, clearError: clearAuthError } = useAuth();
+  const { user, signIn, error: authError, clearError: clearAuthError } = useAuth();
+  const pendingGenerateRef = useRef(false);
 
   // Shared target dimensions (used by FramedPreview + handleGenerate + VariationGrid label)
   const { targetWidth, targetHeight } = useMemo(() => {
@@ -115,6 +116,9 @@ function Editor() {
 
   // --- Generate ---
 
+  // Ref to latest handleGenerate so the post-sign-in effect can call it without stale closures
+  const generateRef = useRef<() => void>(() => {});
+
   const handleGenerate = useCallback(() => {
     if (!imageDataUrl) return;
 
@@ -159,6 +163,24 @@ function Editor() {
       return result;
     });
   }, [imageDataUrl, description, selectedTemplate.id, selectedPresetId, customWidth, customHeight, targetWidth, targetHeight, execute, showToast]);
+
+  // Keep ref in sync so post-sign-in effect uses latest closure
+  generateRef.current = handleGenerate;
+
+  // Auto-generate after sign-in completes (triggered by handleSignInToGenerate)
+  useEffect(() => {
+    if (user && pendingGenerateRef.current) {
+      pendingGenerateRef.current = false;
+      // Delay to let CreditContext initialize free credits
+      const timer = setTimeout(() => generateRef.current(), 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [user]);
+
+  const handleSignInToGenerate = useCallback(() => {
+    pendingGenerateRef.current = true;
+    signIn();
+  }, [signIn]);
 
   const handleRegenerate = useCallback(() => {
     handleGenerate();
@@ -367,6 +389,7 @@ function Editor() {
               onGenerate={handleGenerate}
               onRegenerate={handleRegenerate}
               onCancel={handleCancelGenerate}
+              onSignInToGenerate={handleSignInToGenerate}
             />
 
             <div className="h-px bg-ds-border" />

@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <script>
+      // SPA fallback: redirect to index with path preserved as query param
+      var path = window.location.pathname;
+      window.location.replace(
+        window.location.origin + '/MarkItUp/' + '?p=' + encodeURIComponent(path)
+      );
+    </script>
+  </head>
+  <body></body>
+</html>

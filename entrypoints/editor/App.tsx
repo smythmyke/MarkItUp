@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AuthProvider, useAuth } from '../../contexts/AuthContext';
 import { CreditProvider } from '../../contexts/CreditContext';
 import { ToastProvider, useToast } from '../../contexts/ToastContext';
-import ImageImport from '../../components/ImageImport';
+import HeroLanding from '../../components/HeroLanding';
 import TemplatePicker from '../../components/TemplatePicker';
 import DescriptionInput from '../../components/DescriptionInput';
 import OutputSizePicker from '../../components/OutputSizePicker';
@@ -25,6 +25,7 @@ import {
   resizeImageToTarget,
 } from '../../lib/outputSizes';
 
+import { isExtension } from '../../lib/platform';
 import headerLogoUrl from '../../assets/header-logo.png';
 
 function Editor() {
@@ -212,7 +213,10 @@ function Editor() {
 
         setFreeRegenUsed(true);
       } catch (err: any) {
-        showToast(err.message || 'Regen failed', 'error');
+        if (!err.cancelled) {
+          console.error('[handleRegen] error:', err);
+          showToast(err.message || 'Regen failed', 'error');
+        }
       } finally {
         setRegenLoadingIndex(-1);
       }
@@ -306,11 +310,14 @@ function Editor() {
 
       {/* Main area */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Canvas / Preview area */}
+        {/* Landing hero (full width, no sidebar) */}
+        {!imageDataUrl ? (
+          <main className="flex flex-1 overflow-hidden bg-ds-bg">
+            <HeroLanding onImageImport={setImageDataUrl} compact={isExtension} />
+          </main>
+        ) : (<>
         <main className="flex flex-1 items-center justify-center overflow-auto bg-ds-bg p-4">
-          {!imageDataUrl ? (
-            <ImageImport onImageImport={setImageDataUrl} />
-          ) : hasResult ? (
+          {hasResult ? (
             /* Show selected variation */
             <img
               src={variations[selectedVariation]}
@@ -335,8 +342,7 @@ function Editor() {
         </main>
 
         {/* Sidebar */}
-        {imageDataUrl && (
-          <aside className="flex w-80 shrink-0 flex-col gap-5 overflow-y-auto scrollbar-hidden border-l border-ds-border bg-ds-surface p-4">
+        <aside className="flex w-80 shrink-0 flex-col gap-5 overflow-y-auto scrollbar-hidden border-l border-ds-border bg-ds-surface p-4">
             {/* Edit Image */}
             {!generating && (
               <button
@@ -414,7 +420,7 @@ function Editor() {
               </>
             )}
           </aside>
-        )}
+        </>)}
       </div>
 
       {/* Modals */}

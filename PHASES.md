@@ -73,8 +73,8 @@
 
 ---
 
-## Phase 5: Image Editor ⬚
-**Status**: Not Started
+## Phase 5: Image Editor ✅
+**Status**: Complete
 
 **Scope**: Client-side image editing tools (crop, resize, rotate/flip, brightness/contrast, background removal) accessible via an "Edit Image" button in the sidebar, opening a modal editor with undo/redo. All operations run in the browser — no server cost, no credits spent.
 
@@ -187,14 +187,58 @@ Upload screenshot
 
 ---
 
-## Phase 7: Launch Prep ⬚
+## Phase 7: Website + GitHub Pages ✅
+**Status**: Complete
+
+**Scope**: Full-featured web app on GitHub Pages (`/docs` folder). Landing page IS the app — upload zone front-and-center, marketing content below the fold. Chrome Web Store compliance pages (privacy, terms, support). Platform abstraction layer so the same codebase runs as both extension and web app.
+
+**Deliverables — Web Build Infrastructure:** ✅
+- `vite.web.config.ts` — Separate Vite config for web build, outputs to `/docs/`
+- `src/web/main.tsx` + `src/web/index.html` — Web entry point (mounts same React app)
+- `lib/platform.ts` — `isExtension` detection via `chrome.runtime.id`
+- `tsconfig.web.json` — TypeScript config for web build
+- npm scripts: `dev:web`, `build:web`, `preview:web`
+
+**Deliverables — Platform Abstraction:** ✅
+- `contexts/AuthContext.tsx` — `signInWithPopup` for web, Chrome Identity API for extension
+- `lib/backgroundRemoval.ts` — Direct `@imgly/background-removal` on web, sandbox iframe on extension
+- `lib/platform.ts` — Single `isExtension` flag used by all platform-aware code
+- `functions/src/index.ts` — `smythmyke.github.io` added to CORS allowed origins
+- `lib/presentationTemplates.ts` — Uses `import.meta.env.BASE_URL` for asset paths
+- `components/HeroLanding.tsx` — Uses `import.meta.env.BASE_URL` for showcase assets
+
+**Deliverables — Static Pages (Deep Space themed, mobile responsive):** ✅
+- `/docs/index.html` — Landing page with embedded web app (upload zone visible immediately)
+- `/docs/privacy.html` — Privacy Policy (CWS required)
+- `/docs/terms.html` — Terms of Service (CWS required)
+- `/docs/support.html` — Support/FAQ (CWS required)
+- `/docs/404.html` — SPA fallback for direct URL access
+
+**Deliverables — Showcase Assets:** ✅
+- `public/showcase/` — L1-L7.png, R1-R7.png, space-bg.mp4 (all 15 files)
+- HeroLanding: full mode (video bg + two scrolling columns) on web, compact mode on extension
+
+**Remaining manual steps (Firebase Console):**
+- Add `smythmyke.github.io` as an authorized domain in Firebase Auth settings
+- Enable Google sign-in provider in Firebase Console (if not already)
+- Deploy updated Cloud Functions with new CORS (`firebase deploy --only functions`)
+
+**Key decisions:**
+- `/docs` folder in main repo, served via GitHub Pages (`smythmyke.github.io/MarkItUp`)
+- Full feature parity with extension — all templates, sizes, editor, export
+- Same React app for both builds — platform detection at runtime
+- `base: '/MarkItUp/'` in web Vite config for correct asset paths on GitHub Pages
+
+---
+
+## Phase 8: Launch Prep ⬚
 **Status**: Not Started
 
-**Scope**: Chrome Web Store listing, privacy policy, terms of service, production Firebase/Stripe config, monitoring, analytics.
+**Scope**: Chrome Web Store listing, production Firebase/Stripe config, monitoring, analytics.
 
 **Deliverables**:
 - Chrome Web Store assets (screenshots, descriptions, promo images)
-- Privacy policy and terms of service pages
+- CWS listing URLs: homepage → GitHub Pages, privacy → /privacy.html, support → /support.html
 - Production environment configuration
 - Firebase security audit
 - Stripe production mode setup

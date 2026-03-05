@@ -1,3 +1,4 @@
+// v2: text quality upgrades, API key fix, model upgrades (2026-03-05)
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
 import { handleAnnotateRequest } from "./annotate";
@@ -16,11 +17,14 @@ function setCorsHeaders(
   res: functions.Response
 ): void {
   const origin = req.headers.origin || "";
-  // Allow any chrome-extension origin and localhost for dev
+  // Allow chrome-extension origins, GitHub Pages, and localhost for dev
+  const allowedOrigins = [
+    "chrome-extension://",
+    "http://localhost",
+    "https://smythmyke.github.io",
+  ];
   if (
-    origin.startsWith("chrome-extension://") ||
-    origin.startsWith("http://localhost") ||
-    origin.startsWith("https://")
+    allowedOrigins.some((prefix) => origin.startsWith(prefix))
   ) {
     res.set("Access-Control-Allow-Origin", origin);
   } else {
@@ -76,7 +80,9 @@ async function verifyAuth(
 }
 
 // Main API endpoint
-export const api = functions.https.onRequest(async (req, res) => {
+export const api = functions
+  .runWith({ timeoutSeconds: 300, memory: "512MB" })
+  .https.onRequest(async (req, res) => {
   setCorsHeaders(req, res);
 
   // Handle preflight

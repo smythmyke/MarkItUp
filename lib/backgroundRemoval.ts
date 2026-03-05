@@ -1,10 +1,13 @@
 /**
- * Background removal via a sandboxed iframe.
+ * Background removal via a sandboxed iframe (extension) or direct library call (web).
  *
- * ONNX Runtime (used by @imgly/background-removal) creates blob: worker URLs
- * which Chrome MV3 extension CSP blocks. The sandbox page has relaxed CSP,
- * so we run the actual removal there and communicate via postMessage.
+ * In Chrome extensions, ONNX Runtime creates blob: worker URLs which MV3 CSP blocks.
+ * The sandbox page has relaxed CSP, so we run the actual removal there via postMessage.
+ *
+ * On the web, there's no CSP restriction, so we can import and run the library directly.
  */
+
+import { isExtension } from './platform';
 
 export type BgRemovalPhase = 'downloading' | 'processing';
 
@@ -13,6 +16,8 @@ export interface BgRemovalProgress {
   progress: number; // 0-1
 }
 
+// --- Extension sandbox approach ---
+
 let sandboxIframe: HTMLIFrameElement | null = null;
 let sandboxReady = false;
 let readyResolve: (() => void) | null = null;
@@ -20,7 +25,6 @@ const readyPromise = new Promise<void>((resolve) => {
   readyResolve = resolve;
 });
 
-/** Create the hidden sandbox iframe (once). */
 function ensureSandbox(): HTMLIFrameElement {
   if (sandboxIframe) return sandboxIframe;
 
@@ -32,7 +36,6 @@ function ensureSandbox(): HTMLIFrameElement {
   return sandboxIframe;
 }
 
-// Listen for messages from sandbox
 window.addEventListener('message', (event) => {
   if (event.data?.type === 'bg-removal-ready') {
     sandboxReady = true;
@@ -42,45 +45,82 @@ window.addEventListener('message', (event) => {
 
 let requestCounter = 0;
 
-/** Remove background from a data URL image. Returns a data URL with transparent background. */
-export async function removeImageBackground(
+function removeViaExtensionSandbox(
   dataUrl: string,
   onProgress?: (progress: BgRemovalProgress) => void,
 ): Promise<string> {
   const iframe = ensureSandbox();
 
-  // Wait for sandbox to be ready
-  if (!sandboxReady) {
-    await readyPromise;
-  }
+  const waitReady = sandboxReady ? Promise.resolve() : readyPromise;
 
-  const id = `bgr-${++requestCounter}`;
+  return waitReady.then(() => {
+    const id = `bgr-${++requestCounter}`;
+
+    return new Promise<string>((resolve, reject) => {
+      function handler(event: MessageEvent) {
+        const msg = event.data;
+        if (!msg || msg.id !== id) return;
+
+        switch (msg.type) {
+          case 'bg-removal-progress':
+            onProgress?.({ phase: msg.phase, progress: msg.progress });
+            break;
+          case 'bg-removal-result':
+            window.removeEventListener('message', handler);
+            resolve(msg.dataUrl);
+            break;
+          case 'bg-removal-error':
+            window.removeEventListener('message', handler);
+            reject(new Error(msg.error));
+            break;
+        }
+      }
+
+      window.addEventListener('message', handler);
+
+      iframe.contentWindow!.postMessage(
+        { type: 'bg-removal-start', id, dataUrl },
+        '*',
+      );
+    });
+  });
+}
+
+// --- Web direct approach ---
+
+async function removeViaDirectLibrary(
+  dataUrl: string,
+  onProgress?: (progress: BgRemovalProgress) => void,
+): Promise<string> {
+  const { removeBackground } = await import('@imgly/background-removal');
+
+  // Convert data URL to blob
+  const response = await fetch(dataUrl);
+  const blob = await response.blob();
+
+  const resultBlob = await removeBackground(blob, {
+    progress: (key: string, current: number, total: number) => {
+      const pct = total > 0 ? current / total : 0;
+      const phase: BgRemovalPhase = key.includes('download') ? 'downloading' : 'processing';
+      onProgress?.({ phase, progress: pct });
+    },
+  });
 
   return new Promise<string>((resolve, reject) => {
-    function handler(event: MessageEvent) {
-      const msg = event.data;
-      if (!msg || msg.id !== id) return;
-
-      switch (msg.type) {
-        case 'bg-removal-progress':
-          onProgress?.({ phase: msg.phase, progress: msg.progress });
-          break;
-        case 'bg-removal-result':
-          window.removeEventListener('message', handler);
-          resolve(msg.dataUrl);
-          break;
-        case 'bg-removal-error':
-          window.removeEventListener('message', handler);
-          reject(new Error(msg.error));
-          break;
-      }
-    }
-
-    window.addEventListener('message', handler);
-
-    iframe.contentWindow!.postMessage(
-      { type: 'bg-removal-start', id, dataUrl },
-      '*',
-    );
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(new Error('Failed to read result'));
+    reader.readAsDataURL(resultBlob);
   });
+}
+
+/** Remove background from a data URL image. Returns a data URL with transparent background. */
+export async function removeImageBackground(
+  dataUrl: string,
+  onProgress?: (progress: BgRemovalProgress) => void,
+): Promise<string> {
+  if (isExtension) {
+    return removeViaExtensionSandbox(dataUrl, onProgress);
+  }
+  return removeViaDirectLibrary(dataUrl, onProgress);
 }

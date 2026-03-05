@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Privacy Policy — MarkItUp</title>
+  <style>
+    :root {
+      --ds-bg: #010409;
+      --ds-surface: #0d1117;
+      --ds-border: #21262d;
+      --ds-text: #e6edf3;
+      --ds-text-muted: #8b949e;
+      --ds-accent: #58a6ff;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+      background: var(--ds-bg);
+      color: var(--ds-text);
+      line-height: 1.7;
+    }
+    .container { max-width: 720px; margin: 0 auto; padding: 48px 24px; }
+    h1 { font-size: 2rem; margin-bottom: 8px; }
+    .updated { color: var(--ds-text-muted); font-size: 0.875rem; margin-bottom: 32px; }
+    h2 { font-size: 1.25rem; margin-top: 32px; margin-bottom: 12px; color: var(--ds-accent); }
+    p, ul { margin-bottom: 16px; color: var(--ds-text-muted); }
+    ul { padding-left: 24px; }
+    li { margin-bottom: 6px; }
+    a { color: var(--ds-accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .back { display: inline-block; margin-bottom: 24px; font-size: 0.875rem; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="/MarkItUp/" class="back">&larr; Back to MarkItUp</a>
+    <h1>Privacy Policy</h1>
+    <p class="updated">Last updated: March 5, 2026</p>
+
+    <h2>What We Collect</h2>
+    <p>When you sign in with Google, we receive your name, email address, and profile picture. This information is used solely to identify your account and display your profile within the app.</p>
+
+    <h2>How We Use Your Data</h2>
+    <ul>
+      <li><strong>Images you upload</strong> are sent to our server only during AI generation. They are not stored after the request completes.</li>
+      <li><strong>Generated visuals</strong> are returned to your browser and not retained on our servers.</li>
+      <li><strong>Credit balance</strong> is stored in Firebase Firestore, linked to your user ID.</li>
+      <li><strong>Payment data</strong> is processed entirely by Stripe. We never see or store your card details.</li>
+    </ul>
+
+    <h2>Third-Party Services</h2>
+    <ul>
+      <li><strong>Firebase</strong> (Google) — Authentication and database</li>
+      <li><strong>Google Gemini API</strong> — AI image generation (images are processed and immediately discarded)</li>
+      <li><strong>Stripe</strong> — Payment processing</li>
+    </ul>
+
+    <h2>Data Retention</h2>
+    <p>We retain your account information (email, display name) and credit balance for as long as your account exists. You may request account deletion by contacting us.</p>
+
+    <h2>Cookies &amp; Local Storage</h2>
+    <p>We use browser local storage for authentication tokens and user preferences (e.g., selected output size). No third-party tracking cookies are used.</p>
+
+    <h2>Your Rights</h2>
+    <p>You can request access to, correction of, or deletion of your personal data at any time by contacting us at the email below.</p>
+
+    <h2>Contact</h2>
+    <p>For privacy-related questions, email <a href="mailto:smythmyke@gmail.com">smythmyke@gmail.com</a>.</p>
+  </div>
+</body>
+</html>

@@ -12,7 +12,10 @@
     "zip": "wxt zip",
     "zip:firefox": "wxt zip -b firefox",
     "compile": "tsc --noEmit",
-    "postinstall": "wxt prepare"
+    "postinstall": "wxt prepare",
+    "dev:web": "vite --config vite.web.config.ts",
+    "build:web": "vite build --config vite.web.config.ts",
+    "preview:web": "vite preview --config vite.web.config.ts"
   },
   "dependencies": {
     "@imgly/background-removal": "^1.7.0",
@@ -24,6 +27,7 @@
     "@tailwindcss/vite": "^4.2.1",
     "@types/react": "^19.2.13",
     "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.4",
     "@wxt-dev/module-react": "^1.1.5",
     "tailwindcss": "^4.2.1",
     "typescript": "^5.9.3",

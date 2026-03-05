@@ -3,10 +3,12 @@ import {
   onAuthStateChanged,
   GoogleAuthProvider,
   signInWithCredential,
+  signInWithPopup,
   signOut as firebaseSignOut,
   type User,
 } from 'firebase/auth';
 import { auth } from '../lib/firebase';
+import { isExtension } from '../lib/platform';
 
 interface AuthContextType {
   user: User | null;
@@ -30,6 +32,8 @@ export const useAuth = () => useContext(AuthContext);
 
 const GOOGLE_CLIENT_ID = '561880138172-82rvojp47km71hub6ej6d27nl9nser5b.apps.googleusercontent.com';
 
+const googleProvider = new GoogleAuthProvider();
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -48,30 +52,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(true);
       setError(null);
 
-      const redirectUri = `https://${chrome.runtime.id}.chromiumapp.org/`;
-      const scopes = encodeURIComponent('openid email profile');
-      const authUrl =
-        `https://accounts.google.com/o/oauth2/v2/auth` +
-        `?client_id=${GOOGLE_CLIENT_ID}` +
-        `&response_type=token` +
-        `&redirect_uri=${encodeURIComponent(redirectUri)}` +
-        `&scope=${scopes}`;
+      if (isExtension) {
+        // Chrome extension: use chrome.identity.launchWebAuthFlow
+        const redirectUri = `https://${chrome.runtime.id}.chromiumapp.org/`;
+        const scopes = encodeURIComponent('openid email profile');
+        const authUrl =
+          `https://accounts.google.com/o/oauth2/v2/auth` +
+          `?client_id=${GOOGLE_CLIENT_ID}` +
+          `&response_type=token` +
+          `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+          `&scope=${scopes}`;
 
-      const responseUrl = await chrome.identity.launchWebAuthFlow({
-        url: authUrl,
-        interactive: true,
-      });
+        const responseUrl = await chrome.identity.launchWebAuthFlow({
+          url: authUrl,
+          interactive: true,
+        });
 
-      if (!responseUrl) throw new Error('No response from Google sign-in');
+        if (!responseUrl) throw new Error('No response from Google sign-in');
 
-      const url = new URL(responseUrl);
-      const params = new URLSearchParams(url.hash.substring(1));
-      const accessToken = params.get('access_token');
+        const url = new URL(responseUrl);
+        const params = new URLSearchParams(url.hash.substring(1));
+        const accessToken = params.get('access_token');
 
-      if (!accessToken) throw new Error('No access token received');
+        if (!accessToken) throw new Error('No access token received');
 
-      const credential = GoogleAuthProvider.credential(null, accessToken);
-      await signInWithCredential(auth, credential);
+        const credential = GoogleAuthProvider.credential(null, accessToken);
+        await signInWithCredential(auth, credential);
+      } else {
+        // Web app: use signInWithPopup
+        await signInWithPopup(auth, googleProvider);
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to sign in with Google';
       setError(message);
@@ -86,8 +96,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(true);
       setError(null);
       await firebaseSignOut(auth);
-      // Clear cached Chrome identity tokens
-      if (chrome.identity?.clearAllCachedAuthTokens) {
+      // Clear cached Chrome identity tokens (extension only)
+      if (isExtension && chrome.identity?.clearAllCachedAuthTokens) {
         await chrome.identity.clearAllCachedAuthTokens();
       }
     } catch (err) {

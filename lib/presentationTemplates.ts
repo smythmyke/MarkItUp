@@ -1,40 +1,44 @@
 import type { PresentationTemplate, TemplateCategory } from '../types';
 
+function previewUrl(id: string): string {
+  return `${import.meta.env.BASE_URL}templates/${id}.webp`;
+}
+
 export const presentationTemplates: PresentationTemplate[] = [
   // --- Product & Marketing ---
   {
     id: 'glassmorphic',
     name: 'Glassmorphic',
     description: 'Frosted glass panel, gradient backdrop, iridescent edges, sparkle accents',
-    previewUrl: '',
+    previewUrl: previewUrl('glassmorphic'),
     category: 'product',
   },
   {
     id: 'bold_marketing',
     name: 'Bold Marketing',
     description: 'Vibrant gradient, large headline, neon glow highlights, energetic',
-    previewUrl: '',
+    previewUrl: previewUrl('bold_marketing'),
     category: 'product',
   },
   {
     id: 'device_mockup',
     name: 'Device Mockup',
     description: 'Screenshot in MacBook/phone frame, angled perspective, gradient background',
-    previewUrl: '',
+    previewUrl: previewUrl('device_mockup'),
     category: 'product',
   },
   {
     id: 'gradient_noise',
     name: 'Gradient Noise',
     description: 'Mesh gradient background, grain texture overlay, warm tactile feel',
-    previewUrl: '',
+    previewUrl: previewUrl('gradient_noise'),
     category: 'product',
   },
   {
     id: 'app_store',
     name: 'App Store',
     description: 'App store screenshot format, phone frame, feature badge, clean background',
-    previewUrl: '',
+    previewUrl: previewUrl('app_store'),
     category: 'product',
   },
 
@@ -43,28 +47,28 @@ export const presentationTemplates: PresentationTemplate[] = [
     id: 'dark_professional',
     name: 'Dark Professional',
     description: 'Dark backdrop, sharp contrast, gold/cyan accents, executive feel',
-    previewUrl: '',
+    previewUrl: previewUrl('dark_professional'),
     category: 'professional',
   },
   {
     id: 'cinematic_aurora',
     name: 'Cinematic Aurora',
     description: 'Dark environment, aurora color washes, particle effects, elegant typography',
-    previewUrl: '',
+    previewUrl: previewUrl('cinematic_aurora'),
     category: 'professional',
   },
   {
     id: 'corporate_clean',
     name: 'Corporate Clean',
     description: 'Blue/gray palette, structured grid, geometric patterns, executive feel',
-    previewUrl: '',
+    previewUrl: previewUrl('corporate_clean'),
     category: 'professional',
   },
   {
     id: 'bento_grid',
     name: 'Bento Grid',
     description: 'Modular card layout, screenshot as hero tile, feature callout tiles',
-    previewUrl: '',
+    previewUrl: previewUrl('bento_grid'),
     category: 'professional',
   },
 
@@ -73,28 +77,28 @@ export const presentationTemplates: PresentationTemplate[] = [
     id: 'clean_minimal',
     name: 'Clean Minimal',
     description: 'White background, thin borders, subtle shadow, clean typography',
-    previewUrl: '',
+    previewUrl: previewUrl('clean_minimal'),
     category: 'technical',
   },
   {
     id: 'documentation',
     name: 'Documentation',
-    description: 'Numbered callouts, clean arrows, step indicators, neutral palette',
-    previewUrl: '',
+    description: 'Single clear callout, clean arrows, neutral palette, help-doc quality',
+    previewUrl: previewUrl('documentation'),
     category: 'technical',
   },
   {
     id: 'blueprint',
     name: 'Blueprint',
     description: 'Engineering diagram aesthetic, grid overlay, technical callouts, monospace',
-    previewUrl: '',
+    previewUrl: previewUrl('blueprint'),
     category: 'technical',
   },
   {
     id: 'terminal_dark',
     name: 'Terminal Dark',
     description: 'Dark terminal-inspired, monospace typography, code aesthetic, green/amber accents',
-    previewUrl: '',
+    previewUrl: previewUrl('terminal_dark'),
     category: 'technical',
   },
 
@@ -103,21 +107,21 @@ export const presentationTemplates: PresentationTemplate[] = [
     id: 'neo_brutalist',
     name: 'Neo Brutalist',
     description: 'Thick black borders, bold primary colors, raw angular layout, offset shadows',
-    previewUrl: '',
+    previewUrl: previewUrl('neo_brutalist'),
     category: 'creative',
   },
   {
     id: 'retro_futurism',
     name: 'Retro Futurism',
     description: 'Chrome finishes, neon palette, dark background with grid floor, 80s sci-fi',
-    previewUrl: '',
+    previewUrl: previewUrl('retro_futurism'),
     category: 'creative',
   },
   {
     id: 'collage_mixed',
     name: 'Collage Mixed',
     description: 'Layered fragments, overlapping elements, mixed media texture, torn edges',
-    previewUrl: '',
+    previewUrl: previewUrl('collage_mixed'),
     category: 'creative',
   },
 ];

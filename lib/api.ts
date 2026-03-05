@@ -3,8 +3,8 @@ import type { Annotation, CreditBalance, GenerateResponse, RegenResponse, TextAn
 
 const API_BASE_URL = 'https://us-central1-markitup-ext.cloudfunctions.net/api';
 const REQUEST_TIMEOUT_MS = 30_000;
-const GENERATE_TIMEOUT_MS = 120_000; // Generate pipeline takes longer (text analysis + image gen)
-const REGEN_TIMEOUT_MS = 90_000;
+const GENERATE_TIMEOUT_MS = 300_000; // Generate pipeline: text analysis + image gen + auto-OCR + possible retry
+const REGEN_TIMEOUT_MS = 180_000; // Regen: OCR + correction + image gen
 
 async function getAuthToken(): Promise<string> {
   const user = auth.currentUser;
@@ -23,7 +23,11 @@ async function callAPI<T>(
   const token = await getAuthToken();
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  let timedOut = false;
+  const timeout = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, timeoutMs);
 
   // If an external signal is provided, abort our controller when it fires
   if (signal) {
@@ -66,6 +70,16 @@ async function callAPI<T>(
   try {
     return await attempt();
   } catch (err: any) {
+    // Distinguish timeout from user cancel
+    if (err.name === 'AbortError' || controller.signal.aborted) {
+      if (timedOut) {
+        throw new Error('Request timed out. Please try again.');
+      }
+      // User-initiated cancel — throw a recognizable error
+      const cancelErr = new Error('cancelled');
+      (cancelErr as any).cancelled = true;
+      throw cancelErr;
+    }
     // Retry once on network errors (not 4xx/5xx HTTP errors, not aborts)
     const isNetworkError = err instanceof TypeError && err.message === 'Failed to fetch';
     if (isNetworkError && !controller.signal.aborted) {
@@ -144,6 +158,10 @@ export function regenVariation(
 
 export async function getBalance(): Promise<CreditBalance> {
   return callAPI<CreditBalance>('/credits/balance');
+}
+
+export async function initCredits(): Promise<CreditBalance> {
+  return callAPI<CreditBalance>('/credits/init');
 }
 
 export async function createCheckoutSession(

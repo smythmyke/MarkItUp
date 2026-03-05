@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState, useCallback, type React
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from './AuthContext';
-import { getBalance, createCheckoutSession } from '../lib/api';
+import { getBalance, initCredits, createCheckoutSession } from '../lib/api';
 import type { CreditBalance, CreditPack } from '../types';
 
 interface CreditContextType {
@@ -59,12 +59,11 @@ export function CreditProvider({ children }: { children: ReactNode }) {
             totalUsed: data.totalUsed || 0,
           });
         } else {
-          // No doc yet — fresh user, credits will be initialized on first AI call
-          setBalance({
-            balance: 0,
-            freeCreditsGranted: false,
-            totalUsed: 0,
+          // No doc yet — fresh user, initialize free credits
+          initCredits().catch((err) => {
+            console.error('Failed to init credits:', err);
           });
+          // onSnapshot will fire again once initCredits creates the doc
         }
         setLoading(false);
       },

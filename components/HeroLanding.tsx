@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import ImageImport from './ImageImport';
+import logoUrl from '../assets/logo.png';
 
 const LEFT_IMAGES = ['L1.png', 'L2.png', 'L3.png', 'L4.png', 'L5.png', 'L6.png', 'L7.png'];
 const RIGHT_IMAGES = ['R1.png', 'R2.png', 'R3.png', 'R4.png', 'R5.png', 'R6.png', 'R7.png'];
@@ -57,7 +58,8 @@ export default function HeroLanding({ onImageImport, compact = false }: HeroLand
 
       {/* Center content */}
       <div className="relative z-10 flex flex-1 flex-col items-center justify-center gap-6 px-8 text-center">
-        <h1 className="text-5xl font-bold leading-tight tracking-tight">
+        <img src={logoUrl} alt="MarkItUp" className="h-20 sm:h-24 lg:h-28" />
+        <h1 className="text-3xl font-bold leading-tight tracking-tight sm:text-4xl lg:text-5xl">
           Turn screenshots into
           <br />
           <span className="text-ds-accent">marketing visuals</span>

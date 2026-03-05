@@ -26,7 +26,7 @@ import {
 } from '../../lib/outputSizes';
 
 import { isExtension } from '../../lib/platform';
-import headerLogoUrl from '../../assets/header-logo.png';
+import logoUrl from '../../assets/logo.png';
 
 function Editor() {
   const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
@@ -293,7 +293,7 @@ function Editor() {
     <div className="flex h-screen flex-col bg-ds-surface text-ds-text">
       {/* Header */}
       <header className="flex h-12 shrink-0 items-center justify-between border-b border-ds-border px-4">
-        <img src={headerLogoUrl} alt="MarkItUp" className="h-7" />
+        <img src={logoUrl} alt="MarkItUp" className="h-8" />
         <div className="flex items-center gap-3">
           {imageDataUrl && (
             <button

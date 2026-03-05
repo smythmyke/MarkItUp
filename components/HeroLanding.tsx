@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import ImageImport from './ImageImport';
+import { useAuth } from '../contexts/AuthContext';
 import logoUrl from '../assets/logo.png';
 
 const LEFT_IMAGES = ['L1.png', 'L2.png', 'L3.png', 'L4.png', 'L5.png', 'L6.png', 'L7.png'];
@@ -18,6 +19,7 @@ interface HeroLandingProps {
 }
 
 export default function HeroLanding({ onImageImport, compact = false }: HeroLandingProps) {
+  const { user } = useAuth();
   const [enlargedSrc, setEnlargedSrc] = useState<string | null>(null);
 
   // Escape to close enlarged view
@@ -71,12 +73,14 @@ export default function HeroLanding({ onImageImport, compact = false }: HeroLand
 
         <ImageImport onImageImport={onImageImport} />
 
-        <div className="inline-flex items-center gap-1.5 rounded-full border border-ds-accent/20 bg-ds-accent/10 px-3.5 py-1.5 text-[13px] text-ds-accent">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
-          </svg>
-          5 free credits on sign-up
-        </div>
+        {!user && (
+          <div className="inline-flex items-center gap-1.5 rounded-full border border-ds-accent/20 bg-ds-accent/10 px-3.5 py-1.5 text-[13px] text-ds-accent">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
+            </svg>
+            5 free credits on first sign-up
+          </div>
+        )}
       </div>
 
       {/* Right scrolling column (web only) */}

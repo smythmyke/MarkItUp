@@ -3,8 +3,7 @@ import {
   onAuthStateChanged,
   GoogleAuthProvider,
   signInWithCredential,
-  signInWithRedirect,
-  getRedirectResult,
+  signInWithPopup,
   signOut as firebaseSignOut,
   type User,
 } from 'firebase/auth';
@@ -46,19 +45,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
     });
 
-    // Handle redirect result on page load (web only)
-    if (!isExtension) {
-      getRedirectResult(auth).catch((err) => {
-        console.error('Redirect sign-in error:', err);
-        setError(err instanceof Error ? err.message : 'Sign-in failed');
-        setLoading(false);
-      });
-    }
-
     return () => unsubscribe();
   }, []);
 
   const signIn = useCallback(async () => {
+    console.log('[Auth] signIn called, isExtension:', isExtension);
     try {
       setLoading(true);
       setError(null);
@@ -90,14 +81,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const credential = GoogleAuthProvider.credential(null, accessToken);
         await signInWithCredential(auth, credential);
       } else {
-        // Web app: use signInWithRedirect (popup blocked by GitHub Pages COOP header)
-        await signInWithRedirect(auth, googleProvider);
+        // Web app: use signInWithPopup (COOP warning is cosmetic, sign-in still works)
+        console.log('[Auth] calling signInWithPopup...');
+        const result = await signInWithPopup(auth, googleProvider);
+        console.log('[Auth] signInWithPopup succeeded, user:', result.user?.email);
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to sign in with Google';
       setError(message);
-      console.error('Sign-in error:', err);
+      console.error('[Auth] Sign-in error:', err);
     } finally {
+      console.log('[Auth] signIn finally block');
       setLoading(false);
     }
   }, []);

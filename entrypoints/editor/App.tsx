@@ -169,15 +169,17 @@ function Editor() {
 
   // Auto-generate after sign-in completes (triggered by handleSignInToGenerate)
   useEffect(() => {
+    console.log('[App] user effect fired, user:', user?.email, 'pendingGenerate:', pendingGenerateRef.current);
     if (user && pendingGenerateRef.current) {
       pendingGenerateRef.current = false;
-      // Delay to let CreditContext initialize free credits
+      console.log('[App] auto-generating after sign-in, delaying 1.5s for credit init...');
       const timer = setTimeout(() => generateRef.current(), 1500);
       return () => clearTimeout(timer);
     }
   }, [user]);
 
   const handleSignInToGenerate = useCallback(() => {
+    console.log('[App] handleSignInToGenerate called, setting pendingGenerate=true');
     pendingGenerateRef.current = true;
     signIn();
   }, [signIn]);

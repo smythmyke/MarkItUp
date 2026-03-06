@@ -6,11 +6,13 @@ import { presentationTemplates, getTemplatesByCategory } from '../lib/presentati
 interface TemplatePickerProps {
   selectedTemplateId: string;
   onTemplateChange: (template: PresentationTemplate) => void;
+  onBrowseAll?: () => void;
 }
 
 export default function TemplatePicker({
   selectedTemplateId,
   onTemplateChange,
+  onBrowseAll,
 }: TemplatePickerProps) {
   const selectedTemplate = presentationTemplates.find((t) => t.id === selectedTemplateId);
   const [activeCategory, setActiveCategory] = useState<TemplateCategory>(
@@ -105,6 +107,23 @@ export default function TemplatePicker({
           );
         })}
       </div>
+
+      {/* Browse all */}
+      {onBrowseAll && (
+        <button
+          type="button"
+          onClick={onBrowseAll}
+          className="flex items-center justify-center gap-1.5 rounded-md border border-ds-border-light px-2 py-1.5 text-[11px] text-ds-text-muted transition-colors hover:border-ds-accent hover:text-ds-accent"
+        >
+          <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="3" width="7" height="7" />
+            <rect x="14" y="3" width="7" height="7" />
+            <rect x="3" y="14" width="7" height="7" />
+            <rect x="14" y="14" width="7" height="7" />
+          </svg>
+          Browse All Templates
+        </button>
+      )}
 
       {/* Hover popover — enlarged preview positioned to the left */}
       {hoveredTemplate && popoverPos && (

@@ -13,6 +13,7 @@ import InsufficientCreditsModal from '../../components/InsufficientCreditsModal'
 import CreditPurchase from '../../components/CreditPurchase';
 import ImageEditor from '../../components/ImageEditor';
 import FramedPreview from '../../components/FramedPreview';
+import TemplateLibrary from '../../components/TemplateLibrary';
 import type { ExportOptions, PresentationTemplate, TextAnalysis } from '../../types';
 import { defaultTemplate } from '../../lib/presentationTemplates';
 import { downloadDataUrl } from '../../lib/utils';
@@ -37,6 +38,7 @@ function Editor() {
   const [checkedVariations, setCheckedVariations] = useState<Set<number>>(new Set());
   const [showPurchase, setShowPurchase] = useState(false);
   const [showEditor, setShowEditor] = useState(false);
+  const [showLibrary, setShowLibrary] = useState(false);
   const [selectedPresetId, setSelectedPresetId] = useState<string>(
     () => localStorage.getItem('markitup:outputSize') || DEFAULT_OUTPUT_SIZE_ID,
   );
@@ -400,6 +402,7 @@ function Editor() {
             <TemplatePicker
               selectedTemplateId={selectedTemplate.id}
               onTemplateChange={setSelectedTemplate}
+              onBrowseAll={() => setShowLibrary(true)}
             />
 
             <div className="h-px bg-ds-border" />
@@ -466,6 +469,14 @@ function Editor() {
           imageDataUrl={imageDataUrl}
           onDone={handleEditDone}
           onCancel={() => setShowEditor(false)}
+        />
+      )}
+
+      {showLibrary && (
+        <TemplateLibrary
+          selectedTemplateId={selectedTemplate.id}
+          onSelect={setSelectedTemplate}
+          onClose={() => setShowLibrary(false)}
         />
       )}
     </div>

@@ -122,6 +122,7 @@ export interface PresentationTemplate {
   description: string;
   previewUrl: string;
   category: TemplateCategory;
+  tags: string[];
 }
 
 // --- Output Size Presets ---

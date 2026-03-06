@@ -10,6 +10,15 @@ interface GenerateBody {
   templateId: string;
   aspectRatio?: string;
   imageSize?: string;
+  annotatedImageDataUrl?: string;
+  includeText?: boolean;
+}
+
+interface HighlightBox {
+  xPercent: number;
+  yPercent: number;
+  widthPercent: number;
+  heightPercent: number;
 }
 
 interface TextAnalysisResult {
@@ -18,6 +27,7 @@ interface TextAnalysisResult {
   highlightTarget: string;
   tooltipText: string;
   marketingCopy: string;
+  highlightBox?: HighlightBox;
 }
 
 interface GenerateResult {
@@ -68,6 +78,14 @@ Use the angle to create visual movement and break the static grid.`,
  * Scenic variation directives — NO text references at all.
  * Used when description is empty (scenic mode).
  */
+/**
+ * Safe zone directive — injected into every image generation prompt.
+ * Ensures text/content stays inset from edges so cover-fit cropping
+ * (due to Gemini aspect ratio vs target size mismatch) never clips content.
+ */
+const SAFE_ZONE = `SAFE ZONE — MANDATORY:
+Keep ALL text, headlines, sub-headlines, tooltips, logos, UI elements, and important visual content at least 5% inset from EVERY edge of the image. The outer 5% margin on all four sides must contain only background, gradients, or decorative elements — NEVER text or critical content. This ensures clean cropping at any aspect ratio.`;
+
 const SCENIC_VARIATION_DIRECTIVES: string[] = [
   // V1: Clean Showcase
   `LAYOUT DIRECTIVE — CLEAN SHOWCASE:
@@ -97,6 +115,47 @@ Do NOT add any text, labels, or annotations of any kind.`,
 ];
 
 /**
+ * Lifestyle variation directives — product-in-context photography.
+ */
+const LIFESTYLE_VARIATION_DIRECTIVES: string[] = [
+  // V1: Close-up Product Shot
+  `LAYOUT DIRECTIVE — CLOSE-UP PRODUCT:
+The product is the hero — fill 50-70% of the frame with the product clearly visible.
+Person is partially visible (hands, arms, torso) providing context but not dominating.
+Shallow depth of field with the product in sharp focus.
+Professional product photography lighting and composition.
+The feel should be commercial, polished, and aspirational — like a brand campaign hero image.`,
+
+  // V2: Wide Lifestyle Scene
+  `LAYOUT DIRECTIVE — WIDE LIFESTYLE SCENE:
+Create a wider environmental scene showing the product in its natural context.
+Person and product share the frame — the environment tells a story about who uses this product.
+Show enough of the setting to establish mood and lifestyle context.
+Natural, editorial photography style — candid and aspirational.
+The feel should be like a lifestyle brand's Instagram post or magazine ad.`,
+];
+
+const LIFESTYLE_SCENIC_DIRECTIVES: string[] = [
+  `LAYOUT DIRECTIVE — CLOSE-UP PRODUCT:
+The product is the hero — fill 50-70% of the frame with the product clearly visible.
+Person is partially visible (hands, arms, torso) providing context but not dominating.
+Shallow depth of field with the product in sharp focus.
+Professional product photography lighting and composition.
+Do NOT add any text, labels, or annotations of any kind.`,
+
+  `LAYOUT DIRECTIVE — WIDE LIFESTYLE SCENE:
+Create a wider environmental scene showing the product in its natural context.
+Person and product share the frame — the environment tells a story about who uses this product.
+Natural, editorial photography style — candid and aspirational.
+Do NOT add any text, labels, or annotations of any kind.`,
+];
+
+/** IDs of lifestyle templates — used to select correct variation directives. */
+const LIFESTYLE_TEMPLATE_IDS = new Set([
+  "hand_holding", "in_use", "flat_lay", "on_display", "unboxing",
+]);
+
+/**
  * Extract base64 data and media type from a data URL.
  */
 function parseDataUrl(dataUrl: string): { mediaType: string; base64Data: string } {
@@ -119,14 +178,41 @@ async function runTextAnalysis(
   base64Data: string,
   mediaType: string,
   description: string,
-  analysisPrompt: string
+  analysisPrompt: string,
+  hasHighlights = false,
 ): Promise<TextAnalysisResult> {
   console.log("runTextAnalysis: starting", {
     mediaType,
     imageSize: base64Data.length,
     descriptionLength: description.length,
     promptLength: analysisPrompt.length,
+    hasHighlights,
   });
+
+  // Build schema — add highlightBox when user drew highlights
+  const schemaProperties: Record<string, any> = {
+    headline: { type: SchemaType.STRING },
+    subHeadline: { type: SchemaType.STRING },
+    highlightTarget: { type: SchemaType.STRING },
+    tooltipText: { type: SchemaType.STRING },
+    marketingCopy: { type: SchemaType.STRING },
+  };
+  const requiredFields = ["headline", "subHeadline", "highlightTarget", "tooltipText", "marketingCopy"];
+
+  if (hasHighlights) {
+    schemaProperties.highlightBox = {
+      type: SchemaType.OBJECT,
+      description: "Bounding box of the highlighted region as percentages of image dimensions (0-100)",
+      properties: {
+        xPercent: { type: SchemaType.NUMBER, description: "Left edge as percentage of image width (0-100)" },
+        yPercent: { type: SchemaType.NUMBER, description: "Top edge as percentage of image height (0-100)" },
+        widthPercent: { type: SchemaType.NUMBER, description: "Width as percentage of image width (0-100)" },
+        heightPercent: { type: SchemaType.NUMBER, description: "Height as percentage of image height (0-100)" },
+      },
+      required: ["xPercent", "yPercent", "widthPercent", "heightPercent"],
+    };
+    requiredFields.push("highlightBox");
+  }
 
   const model = genAI.getGenerativeModel({
     model: "gemini-2.5-flash",
@@ -135,17 +221,15 @@ async function runTextAnalysis(
       responseMimeType: "application/json",
       responseSchema: {
         type: SchemaType.OBJECT,
-        properties: {
-          headline: { type: SchemaType.STRING },
-          subHeadline: { type: SchemaType.STRING },
-          highlightTarget: { type: SchemaType.STRING },
-          tooltipText: { type: SchemaType.STRING },
-          marketingCopy: { type: SchemaType.STRING },
-        },
-        required: ["headline", "subHeadline", "highlightTarget", "tooltipText", "marketingCopy"],
+        properties: schemaProperties,
+        required: requiredFields,
       },
     },
   });
+
+  const highlightInstruction = hasHighlights
+    ? "\n\nThe image contains blue semi-transparent highlight overlays drawn by the user to indicate the area they want emphasized. Identify the bounding box of the highlighted region and return it in highlightBox as percentages of the image dimensions (0-100). The tooltip/callout should reference this highlighted area."
+    : "";
 
   let response;
   try {
@@ -157,7 +241,7 @@ async function runTextAnalysis(
         },
       },
       {
-        text: `${description}\n\nIMPORTANT: Double-check all spelling. Every word must be spelled correctly.`,
+        text: `${description}${highlightInstruction}\n\nIMPORTANT: Double-check all spelling. Every word must be spelled correctly.`,
       },
     ]);
   } catch (apiError: any) {
@@ -228,6 +312,7 @@ async function runGeminiGeneration(
   aspectRatio?: string,
   imageSize?: string,
   scenic?: boolean,
+  templateId?: string,
 ): Promise<string | null> {
   console.log(`runGeminiGeneration[${variationIndex}]: starting`, {
     mediaType,
@@ -253,11 +338,20 @@ async function runGeminiGeneration(
       },
     });
 
-    const directives = scenic ? SCENIC_VARIATION_DIRECTIVES : VARIATION_DIRECTIVES;
+    const isLifestyle = templateId ? LIFESTYLE_TEMPLATE_IDS.has(templateId) : false;
+    let directives: string[];
+    if (isLifestyle) {
+      directives = scenic ? LIFESTYLE_SCENIC_DIRECTIVES : LIFESTYLE_VARIATION_DIRECTIVES;
+    } else {
+      directives = scenic ? SCENIC_VARIATION_DIRECTIVES : VARIATION_DIRECTIVES;
+    }
     const layoutDirective = directives[variationIndex] || directives[0];
+
     const closingInstruction = scenic
-      ? "Generate the scenic visual as an image. The screenshot provided above should be incorporated into the final visual. Do NOT include any text whatsoever."
-      : "Generate the marketing visual as an image. The screenshot provided above should be incorporated into the final visual. Ensure there is no gibberish text, extra floating letters, or misspelled words anywhere in the image.";
+      ? "Generate the visual as an image. The product shown in the screenshot above should be clearly recognizable in the final image. Do NOT include any text whatsoever."
+      : isLifestyle
+        ? "Generate the lifestyle product visual as an image. The product shown in the screenshot above must be clearly recognizable in the final image. AI-generated people are fictional. Ensure there is no gibberish text, extra floating letters, or misspelled words anywhere in the image."
+        : "Generate the marketing visual as an image. The screenshot provided above should be incorporated into the final visual. Ensure there is no gibberish text, extra floating letters, or misspelled words anywhere in the image.";
 
     const result = await model.generateContent([
       {
@@ -267,7 +361,7 @@ async function runGeminiGeneration(
         },
       },
       {
-        text: `${layoutDirective}\n\n${imagePrompt}\n\n${closingInstruction}`,
+        text: `${SAFE_ZONE}\n\n${layoutDirective}\n\n${imagePrompt}\n\n${closingInstruction}`,
       },
     ]);
 
@@ -347,7 +441,7 @@ export async function handleGenerateRequest(
   body: GenerateBody,
   user: admin.auth.DecodedIdToken
 ): Promise<GenerateResult> {
-  const { imageDataUrl, description, templateId, aspectRatio, imageSize } = body;
+  const { imageDataUrl, description, templateId, aspectRatio, imageSize, annotatedImageDataUrl, includeText } = body;
 
   if (!imageDataUrl || !templateId) {
     throw new functions.https.HttpsError(
@@ -384,6 +478,16 @@ export async function handleGenerateRequest(
 
   const { mediaType, base64Data } = parseDataUrl(imageDataUrl);
 
+  // If user drew highlights, parse the annotated image for text analysis
+  let analysisMediaType = mediaType;
+  let analysisBase64Data = base64Data;
+  if (annotatedImageDataUrl) {
+    const annotated = parseDataUrl(annotatedImageDataUrl);
+    analysisMediaType = annotated.mediaType;
+    analysisBase64Data = annotated.base64Data;
+    console.log("Generate: using annotated image for text analysis");
+  }
+
   const db = admin.firestore();
 
   // Ensure credits are initialized
@@ -402,8 +506,8 @@ export async function handleGenerateRequest(
   }
   const genAI = new GoogleGenerativeAI(geminiApiKey);
 
-  // Scenic mode: skip text analysis when description is empty
-  const scenic = !description || !description.trim();
+  // Scenic mode: skip text analysis when description is empty or includeText is false
+  const scenic = !description || !description.trim() || includeText === false;
   let analysisResult: TextAnalysisResult | null = null;
   let imagePrompt: string;
 
@@ -415,10 +519,11 @@ export async function handleGenerateRequest(
     console.log(`Generate: Step 1 — text analysis for user ${user.uid}, template ${templateId}`);
     analysisResult = await runTextAnalysis(
       genAI,
-      base64Data,
-      mediaType,
+      analysisBase64Data,
+      analysisMediaType,
       description,
-      template.analysisPrompt
+      template.analysisPrompt,
+      !!annotatedImageDataUrl,
     );
     console.log("Analysis result:", JSON.stringify(analysisResult));
     imagePrompt = buildImagePrompt(template, analysisResult);
@@ -428,7 +533,7 @@ export async function handleGenerateRequest(
 
   // Run 2 generations in parallel
   const variationPromises = [0, 1].map((i) =>
-    runGeminiGeneration(genAI, base64Data, mediaType, imagePrompt, i, aspectRatio, imageSize, scenic)
+    runGeminiGeneration(genAI, base64Data, mediaType, imagePrompt, i, aspectRatio, imageSize, scenic, templateId)
   );
 
   const variationResults = await Promise.all(variationPromises);
@@ -456,7 +561,7 @@ export async function handleGenerateRequest(
   if (!scenic && analysisResult) {
     console.log("Generate: Step 3 — Auto-OCR text validation");
     variations = await autoOcrAndRetry(
-      genAI, variations, analysisResult, base64Data, mediaType, imagePrompt, aspectRatio, imageSize
+      genAI, variations, analysisResult, base64Data, mediaType, imagePrompt, aspectRatio, imageSize, templateId
     );
   }
 
@@ -481,6 +586,7 @@ async function autoOcrAndRetry(
   imagePrompt: string,
   aspectRatio?: string,
   imageSize?: string,
+  templateId?: string,
 ): Promise<string[]> {
   // OCR all variations in parallel
   const ocrPromises = variations.map((v, i) => {
@@ -512,7 +618,7 @@ async function autoOcrAndRetry(
     const correctedPrompt = imagePrompt + correctionSuffix;
 
     retryPromises[i] = runGeminiGeneration(
-      genAI, base64Data, mediaType, correctedPrompt, i, aspectRatio, imageSize, false
+      genAI, base64Data, mediaType, correctedPrompt, i, aspectRatio, imageSize, false, templateId
     );
   }
 
@@ -722,7 +828,7 @@ export async function handleRegenRequest(
   }
 
   const variation = await runGeminiGeneration(
-    genAI, base64Data, mediaType, imagePrompt, variationIndex, aspectRatio, imageSize, scenic
+    genAI, base64Data, mediaType, imagePrompt, variationIndex, aspectRatio, imageSize, scenic, templateId
   );
 
   if (!variation) {

@@ -82,6 +82,7 @@ export interface CreditBalance {
   balance: number;
   freeCreditsGranted: boolean;
   totalUsed: number;
+  totalPurchased: number;
 }
 
 export interface CreditPack {
@@ -106,7 +107,7 @@ export interface AnnotateResponse {
 
 // --- Presentation Templates ---
 
-export type TemplateCategory = 'product' | 'professional' | 'technical' | 'creative' | 'decade';
+export type TemplateCategory = 'product' | 'professional' | 'technical' | 'creative' | 'decade' | 'lifestyle';
 
 export const TEMPLATE_CATEGORIES: { id: TemplateCategory; label: string }[] = [
   { id: 'product', label: 'Product' },
@@ -114,6 +115,7 @@ export const TEMPLATE_CATEGORIES: { id: TemplateCategory; label: string }[] = [
   { id: 'technical', label: 'Technical' },
   { id: 'creative', label: 'Creative' },
   { id: 'decade', label: 'Decade' },
+  { id: 'lifestyle', label: 'Lifestyle' },
 ];
 
 export interface PresentationTemplate {

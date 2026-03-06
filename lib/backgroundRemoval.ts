@@ -92,7 +92,12 @@ async function removeViaDirectLibrary(
   dataUrl: string,
   onProgress?: (progress: BgRemovalProgress) => void,
 ): Promise<string> {
-  const { removeBackground } = await import('@imgly/background-removal');
+  // Use a variable so Vite/Rollup can't statically analyse the specifier and
+  // won't bundle @imgly/background-removal into the extension's editor chunk.
+  // In the extension build this function is never called (isExtension === true),
+  // but Vite would still bundle the dynamic import if the string were a literal.
+  const mod = '@imgly/background-removal';
+  const { removeBackground } = await import(/* @vite-ignore */ mod);
 
   // Convert data URL to blob
   const response = await fetch(dataUrl);

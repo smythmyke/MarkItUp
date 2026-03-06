@@ -35,6 +35,15 @@
   17%, 100%{ border-color: var(--color-ds-border-light); box-shadow: none; }
 }
 
+/* Generating preview — fade in on template change */
+@keyframes fadeIn {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+.animate-fadeIn {
+  animation: fadeIn 0.5s ease-in-out;
+}
+
 @theme {
   /* Deep Space palette */
   --color-ds-bg: #010409;

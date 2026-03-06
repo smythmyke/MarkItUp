@@ -1,0 +1,11 @@
+<svg xmlns='http://www.w3.org/2000/svg' width='400' height='300'>
+    <defs>
+      <linearGradient id='bg' x1='0%' y1='0%' x2='100%' y2='100%'>
+        <stop offset='0%' stop-color='#ec4899'/>
+        <stop offset='100%' stop-color='#1a1a2e'/>
+      </linearGradient>
+    </defs>
+    <rect width='400' height='300' fill='url(#bg)'/>
+    <text x='200' y='140' text-anchor='middle' font-family='Arial,sans-serif' font-size='28' font-weight='bold' fill='white'>On Display</text>
+    <text x='200' y='175' text-anchor='middle' font-family='Arial,sans-serif' font-size='14' fill='rgba(255,255,255,0.7)'>Lifestyle Template</text>
+  </svg>

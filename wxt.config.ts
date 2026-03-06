@@ -13,6 +13,10 @@ export default defineConfig({
       scopes: ['openid', 'email', 'profile'],
     },
     action: {},
+    content_security_policy: {
+      sandbox:
+        "sandbox allow-scripts allow-forms allow-popups allow-modals allow-popups-to-escape-sandbox; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:;",
+    },
     sandbox: {
       pages: ['sandbox.html'],
     },

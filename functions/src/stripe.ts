@@ -14,7 +14,8 @@ function getStripe(): Stripe {
 export async function createCreditCheckoutSession(
   uid: string,
   email: string,
-  packId: string
+  packId: string,
+  returnUrl?: string
 ): Promise<{ url: string; sessionId: string }> {
   const pack = CREDIT_PACKS.find((p) => p.id === packId);
   if (!pack) {
@@ -44,8 +45,8 @@ export async function createCreditCheckoutSession(
       packId: pack.id,
       credits: String(pack.credits),
     },
-    success_url: "https://smythmyke.github.io/MarkItUp/?purchase=success",
-    cancel_url: "https://smythmyke.github.io/MarkItUp/?purchase=cancelled",
+    success_url: `${returnUrl || "https://smythmyke.github.io/MarkItUp/"}?purchase=success`,
+    cancel_url: `${returnUrl || "https://smythmyke.github.io/MarkItUp/"}?purchase=cancelled`,
   });
 
   if (!session.url) {

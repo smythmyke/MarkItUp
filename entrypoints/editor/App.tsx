@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AuthProvider, useAuth } from '../../contexts/AuthContext';
-import { CreditProvider } from '../../contexts/CreditContext';
+import { CreditProvider, useCredits } from '../../contexts/CreditContext';
 import { ToastProvider, useToast } from '../../contexts/ToastContext';
 import HeroLanding from '../../components/HeroLanding';
 import TemplatePicker from '../../components/TemplatePicker';
@@ -13,6 +13,8 @@ import InsufficientCreditsModal from '../../components/InsufficientCreditsModal'
 import CreditPurchase from '../../components/CreditPurchase';
 import ImageEditor from '../../components/ImageEditor';
 import FramedPreview from '../../components/FramedPreview';
+import GeneratingPreview from '../../components/GeneratingPreview';
+import HighlightOverlay from '../../components/HighlightOverlay';
 import TemplateLibrary from '../../components/TemplateLibrary';
 import type { ExportOptions, PresentationTemplate, TextAnalysis } from '../../types';
 import { defaultTemplate } from '../../lib/presentationTemplates';
@@ -24,9 +26,11 @@ import {
   findPresetById,
   resolveGeminiConfig,
   resizeImageToTarget,
+  checkResizeCompatibility,
 } from '../../lib/outputSizes';
 
 import { isExtension } from '../../lib/platform';
+import { applyWatermark } from '../../lib/watermark';
 import logoUrl from '../../assets/logo.png';
 
 function Editor() {
@@ -52,10 +56,19 @@ function Editor() {
     quality: 0.9,
   });
 
+  const [includeText, setIncludeText] = useState(true);
+  const [hasHighlights, setHasHighlights] = useState(false);
+  const highlightCompositeRef = useRef<(() => Promise<string | null>) | null>(null);
+
+  // Raw Gemini outputs (before resize) — used for free resize when switching output sizes
+  const [rawVariations, setRawVariations] = useState<string[]>([]);
+  const [genGeminiConfig, setGenGeminiConfig] = useState<{ aspectRatio: string; imageSize: string } | null>(null);
+
   const abortRef = useRef<AbortController | null>(null);
   const { execute, loading: generating, error: gateError, showInsufficientModal, dismissModal } = useCreditGate();
   const { showToast } = useToast();
   const { user, signIn, error: authError, clearError: clearAuthError } = useAuth();
+  const { isFreeUser } = useCredits();
   const pendingGenerateRef = useRef(false);
 
   // Shared target dimensions (used by FramedPreview + handleGenerate + VariationGrid label)
@@ -66,6 +79,23 @@ function Editor() {
       targetHeight: preset ? preset.height : customHeight,
     };
   }, [selectedPresetId, customWidth, customHeight]);
+
+  // Handle ?purchase=success/cancelled query param (Stripe redirect)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const purchase = params.get('purchase');
+    if (purchase === 'success') {
+      showToast('Credits purchased successfully!', 'success');
+    } else if (purchase === 'cancelled') {
+      showToast('Purchase cancelled', 'error');
+    }
+    // Clean up the URL so refresh doesn't re-trigger
+    if (purchase) {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('purchase');
+      window.history.replaceState({}, '', url.toString());
+    }
+  }, []);
 
   // Show auth errors as toasts
   useEffect(() => {
@@ -86,6 +116,45 @@ function Editor() {
   useEffect(() => {
     localStorage.setItem('markitup:outputSize', selectedPresetId);
   }, [selectedPresetId]);
+
+  const isLifestyle = selectedTemplate.category === 'lifestyle';
+
+  // Auto-toggle includeText when switching to/from Lifestyle
+  useEffect(() => {
+    setIncludeText(!isLifestyle);
+  }, [isLifestyle]);
+
+  // Free resize when output size changes after generation
+  useEffect(() => {
+    if (rawVariations.length === 0 || !genGeminiConfig) return;
+
+    const preset = selectedPresetId !== 'custom' ? findPresetById(selectedPresetId) : null;
+    const newGemini = preset
+      ? { aspectRatio: preset.geminiAspectRatio, imageSize: preset.geminiImageSize }
+      : resolveGeminiConfig(customWidth, customHeight);
+    const newMaxDim = Math.max(targetWidth, targetHeight);
+
+    const compat = checkResizeCompatibility(
+      genGeminiConfig.aspectRatio,
+      genGeminiConfig.imageSize,
+      newGemini.aspectRatio,
+      newMaxDim,
+    );
+
+    if (compat.compatible) {
+      // Free instant resize from raw Gemini outputs
+      Promise.all(
+        rawVariations.map((v) => resizeImageToTarget(v, targetWidth, targetHeight)),
+      ).then((resized) => {
+        setVariations(resized);
+        setCheckedVariations(new Set(resized.map((_, i) => i)));
+      });
+    } else {
+      // Incompatible — show warning, keep current variations but mark as mismatched
+      showToast(compat.reason || 'Regenerate for best results at this size.', 'info');
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedPresetId, customWidth, customHeight, targetWidth, targetHeight]);
 
   // Listen for "Buy Credits" from AuthButton dropdown
   useEffect(() => {
@@ -124,6 +193,14 @@ function Editor() {
   const handleGenerate = useCallback(() => {
     if (!imageDataUrl) return;
 
+    // Clear previous results so loading state is consistent for both first-gen and re-gen
+    setVariations([]);
+    setRawVariations([]);
+    setSelectedVariation(0);
+    setCheckedVariations(new Set());
+    setTextAnalysis(null);
+    setFreeRegenUsed(false);
+
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
@@ -134,7 +211,21 @@ function Editor() {
       ? { aspectRatio: preset.geminiAspectRatio, imageSize: preset.geminiImageSize }
       : resolveGeminiConfig(customWidth, customHeight);
 
+    // First-time AI disclaimer
+    if (!localStorage.getItem('markitup:aiDisclaimerSeen')) {
+      localStorage.setItem('markitup:aiDisclaimerSeen', '1');
+      showToast(
+        'AI-generated images may contain misspellings or visual artifacts. Always review before publishing.',
+        'info',
+      );
+    }
+
     execute(async () => {
+      // Composite highlighted image if user drew highlights
+      const annotatedImage = highlightCompositeRef.current
+        ? await highlightCompositeRef.current()
+        : null;
+
       const result = await generateVisual(
         imageDataUrl,
         description.trim(),
@@ -142,7 +233,13 @@ function Editor() {
         gemini.aspectRatio,
         gemini.imageSize,
         controller.signal,
+        annotatedImage,
+        includeText,
       );
+
+      // Store raw Gemini outputs + config for free resize later
+      setRawVariations(result.variations);
+      setGenGeminiConfig(gemini);
 
       // Resize all variations to exact target dimensions
       const resized = await Promise.all(
@@ -164,7 +261,7 @@ function Editor() {
 
       return result;
     });
-  }, [imageDataUrl, description, selectedTemplate.id, selectedPresetId, customWidth, customHeight, targetWidth, targetHeight, execute, showToast]);
+  }, [imageDataUrl, description, selectedTemplate.id, selectedPresetId, customWidth, customHeight, targetWidth, targetHeight, execute, showToast, includeText]);
 
   // Keep ref in sync so post-sign-in effect uses latest closure
   generateRef.current = handleGenerate;
@@ -224,6 +321,13 @@ function Editor() {
 
         const resized = await resizeImageToTarget(result.variation, targetWidth, targetHeight);
 
+        // Update raw variations for free resize
+        setRawVariations((prev) => {
+          const next = [...prev];
+          next[index] = result.variation;
+          return next;
+        });
+
         setVariations((prev) => {
           const next = [...prev];
           next[index] = resized;
@@ -269,15 +373,25 @@ function Editor() {
     });
   }, []);
 
-  const handleExport = useCallback(() => {
+  const handleExport = useCallback(async () => {
     if (checkedVariations.size === 0) return;
 
     const ext = exportOptions.format === 'jpeg' ? 'jpg' : 'png';
     const sorted = [...checkedVariations].sort();
 
     for (const i of sorted) {
-      const dataUrl = variations[i];
+      let dataUrl = variations[i];
       if (!dataUrl) continue;
+
+      // Apply watermark for free-credit users
+      if (isFreeUser) {
+        try {
+          dataUrl = await applyWatermark(dataUrl, exportOptions.format, exportOptions.quality);
+        } catch (err) {
+          console.error('Watermark failed, exporting without:', err);
+        }
+      }
+
       const suffix = sorted.length > 1 ? `-${i + 1}` : '';
       downloadDataUrl(dataUrl, `markitup-export${suffix}.${ext}`);
     }
@@ -286,7 +400,7 @@ function Editor() {
       sorted.length === 1 ? 'Image exported!' : `${sorted.length} images exported!`,
       'success',
     );
-  }, [variations, checkedVariations, exportOptions.format, showToast]);
+  }, [variations, checkedVariations, exportOptions, isFreeUser, showToast]);
 
   // --- New Image ---
 
@@ -294,17 +408,22 @@ function Editor() {
     setImageDataUrl(null);
     setDescription('');
     setVariations([]);
+    setRawVariations([]);
+    setGenGeminiConfig(null);
     setSelectedVariation(0);
     setCheckedVariations(new Set());
     setSelectedTemplate(defaultTemplate);
     setTextAnalysis(null);
     setRegenLoadingIndex(-1);
     setFreeRegenUsed(false);
+    setHasHighlights(false);
   }, []);
 
   const handleEditDone = useCallback((editedDataUrl: string) => {
     setImageDataUrl(editedDataUrl);
     setVariations([]);
+    setRawVariations([]);
+    setGenGeminiConfig(null);
     setSelectedVariation(0);
     setCheckedVariations(new Set());
     setShowEditor(false);
@@ -343,12 +462,15 @@ function Editor() {
           </main>
         ) : (<>
         <main className="flex flex-1 items-center justify-center overflow-auto bg-ds-bg p-4">
-          {hasResult ? (
+          {generating ? (
+            /* Generating — template carousel */
+            <GeneratingPreview selectedTemplateName={selectedTemplate.name} />
+          ) : hasResult ? (
             /* Show selected variation */
             <img
               src={variations[selectedVariation]}
               alt={`Selected variation ${selectedVariation + 1}`}
-              className="max-h-full max-w-full rounded-lg object-contain shadow-lg"
+              className="h-full w-full rounded-lg object-contain shadow-lg"
             />
           ) : (
             /* Show source image with zoom/pan crop frame */
@@ -384,6 +506,15 @@ function Editor() {
               </button>
             )}
 
+            {/* Highlight Areas */}
+            {!generating && !hasResult && (
+              <HighlightOverlay
+                imageDataUrl={imageDataUrl}
+                onHighlightsChange={setHasHighlights}
+                compositeRef={highlightCompositeRef}
+              />
+            )}
+
             {/* Description */}
             <DescriptionInput
               description={description}
@@ -394,6 +525,9 @@ function Editor() {
               onRegenerate={handleRegenerate}
               onCancel={handleCancelGenerate}
               onSignInToGenerate={handleSignInToGenerate}
+              isLifestyle={isLifestyle}
+              includeText={includeText}
+              onIncludeTextChange={setIncludeText}
             />
 
             <div className="h-px bg-ds-border" />

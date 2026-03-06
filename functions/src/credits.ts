@@ -35,12 +35,12 @@ function defaultCreditDoc(): CreditDoc {
 export async function getBalance(
   db: FirebaseFirestore.Firestore,
   uid: string
-): Promise<{ balance: number; freeCreditsGranted: boolean; totalUsed: number }> {
+): Promise<{ balance: number; freeCreditsGranted: boolean; totalUsed: number; totalPurchased: number }> {
   const docRef = db.collection("credits").doc(uid);
   const snap = await docRef.get();
 
   if (!snap.exists) {
-    return { balance: 0, freeCreditsGranted: false, totalUsed: 0 };
+    return { balance: 0, freeCreditsGranted: false, totalUsed: 0, totalPurchased: 0 };
   }
 
   const data = snap.data() as CreditDoc;
@@ -48,6 +48,7 @@ export async function getBalance(
     balance: data.balance || 0,
     freeCreditsGranted: data.freeCreditsGranted || false,
     totalUsed: data.totalUsed || 0,
+    totalPurchased: data.totalPurchased || 0,
   };
 }
 
@@ -195,7 +196,8 @@ export async function handleCreditRequest(
       if (!packId) {
         throw new functions.https.HttpsError("invalid-argument", "packId is required");
       }
-      return createCreditCheckoutSession(user.uid, user.email || "", packId);
+      const returnUrl = body.returnUrl as string | undefined;
+      return createCreditCheckoutSession(user.uid, user.email || "", packId, returnUrl);
     }
 
     case "packs":

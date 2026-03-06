@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { PresentationTemplate, TemplateCategory } from '../types';
 import { TEMPLATE_CATEGORIES } from '../types';
 import { presentationTemplates, getTemplatesByCategory } from '../lib/presentationTemplates';
@@ -25,35 +25,11 @@ export default function TemplatePicker({
       setActiveCategory(selectedTemplate.category);
     }
   }, [selectedTemplateId]);
-  const [hoveredTemplate, setHoveredTemplate] = useState<PresentationTemplate | null>(null);
-  const [popoverPos, setPopoverPos] = useState<{ top: number; left: number } | null>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
 
   const filteredTemplates = getTemplatesByCategory(activeCategory);
 
-  function handleMouseEnter(template: PresentationTemplate, e: React.MouseEvent<HTMLButtonElement>) {
-    const btn = e.currentTarget;
-    const container = containerRef.current;
-    if (!container) return;
-
-    const btnRect = btn.getBoundingClientRect();
-    const containerRect = container.getBoundingClientRect();
-
-    // Position popover to the left of the sidebar, vertically centered on the card
-    setPopoverPos({
-      top: btnRect.top - containerRect.top + btnRect.height / 2,
-      left: -8, // just left of the container edge
-    });
-    setHoveredTemplate(template);
-  }
-
-  function handleMouseLeave() {
-    setHoveredTemplate(null);
-    setPopoverPos(null);
-  }
-
   return (
-    <div className="relative flex flex-col gap-2" ref={containerRef}>
+    <div className="flex flex-col gap-2">
       <h3 className="text-xs font-semibold uppercase tracking-wider text-ds-text-dim">
         Template
       </h3>
@@ -76,22 +52,24 @@ export default function TemplatePicker({
         </div>
       )}
 
-      {/* Category tab bar */}
-      <div className="flex rounded-md overflow-hidden border border-ds-border">
-        {TEMPLATE_CATEGORIES.map((cat) => (
-          <button
-            key={cat.id}
-            type="button"
-            onClick={() => setActiveCategory(cat.id)}
-            className={`flex-1 px-1 py-1.5 text-[11px] font-medium transition-colors ${
-              activeCategory === cat.id
-                ? 'bg-ds-accent-emphasis text-white'
-                : 'bg-ds-elevated text-ds-text-muted hover:text-ds-text'
-            }`}
-          >
-            {cat.label}
-          </button>
-        ))}
+      {/* Category tab bar — horizontally scrollable for 6+ categories */}
+      <div className="relative">
+        <div className="flex gap-0.5 overflow-x-auto scrollbar-hidden rounded-md border border-ds-border bg-ds-elevated">
+          {TEMPLATE_CATEGORIES.map((cat) => (
+            <button
+              key={cat.id}
+              type="button"
+              onClick={() => setActiveCategory(cat.id)}
+              className={`shrink-0 px-2.5 py-1.5 text-[11px] font-medium transition-colors ${
+                activeCategory === cat.id
+                  ? 'bg-ds-accent-emphasis text-white'
+                  : 'text-ds-text-muted hover:text-ds-text'
+              }`}
+            >
+              {cat.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Template grid */}
@@ -106,8 +84,6 @@ export default function TemplatePicker({
               aria-label={`${template.name} template`}
               aria-current={isActive ? 'true' : undefined}
               onClick={() => onTemplateChange(template)}
-              onMouseEnter={(e) => handleMouseEnter(template, e)}
-              onMouseLeave={handleMouseLeave}
               className={`flex flex-col gap-1 rounded-lg border overflow-hidden text-left transition-all ${
                 isActive
                   ? 'border-ds-accent ring-1 ring-ds-accent-border'
@@ -150,30 +126,6 @@ export default function TemplatePicker({
         </button>
       )}
 
-      {/* Hover popover — enlarged preview positioned to the left */}
-      {hoveredTemplate && popoverPos && (
-        <div
-          className="pointer-events-none absolute z-50"
-          style={{
-            top: popoverPos.top,
-            right: '100%',
-            transform: 'translateY(-50%)',
-            marginRight: 8,
-          }}
-        >
-          <div className="overflow-hidden rounded-xl border border-ds-border-light bg-ds-elevated shadow-2xl shadow-black/60">
-            <img
-              src={hoveredTemplate.previewUrl}
-              alt={`${hoveredTemplate.name} enlarged`}
-              className="h-auto w-56"
-            />
-            <div className="px-3 py-2">
-              <div className="text-sm font-medium text-ds-text">{hoveredTemplate.name}</div>
-              <div className="text-xs text-ds-text-muted">{hoveredTemplate.description}</div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

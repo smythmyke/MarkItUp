@@ -10,6 +10,7 @@ interface CreditContextType {
   loading: boolean;
   error: string | null;
   canUseAI: boolean;
+  isFreeUser: boolean;
   purchaseCredits: (packId: string) => Promise<Window | null>;
   refreshBalance: () => Promise<void>;
   clearError: () => void;
@@ -20,6 +21,7 @@ const CreditContext = createContext<CreditContextType>({
   loading: true,
   error: null,
   canUseAI: false,
+  isFreeUser: true,
   purchaseCredits: async () => null,
   refreshBalance: async () => {},
   clearError: () => {},
@@ -57,6 +59,7 @@ export function CreditProvider({ children }: { children: ReactNode }) {
             balance: data.balance || 0,
             freeCreditsGranted: data.freeCreditsGranted || false,
             totalUsed: data.totalUsed || 0,
+            totalPurchased: data.totalPurchased || 0,
           });
         } else {
           // No doc yet — fresh user, initialize free credits
@@ -79,6 +82,7 @@ export function CreditProvider({ children }: { children: ReactNode }) {
   }, [user]);
 
   const canUseAI = balance !== null && balance.balance > 0;
+  const isFreeUser = !balance || balance.totalPurchased === 0;
 
   const refreshBalance = useCallback(async () => {
     if (!user) return;
@@ -93,7 +97,9 @@ export function CreditProvider({ children }: { children: ReactNode }) {
   const purchaseCredits = useCallback(async (packId: string): Promise<Window | null> => {
     setError(null);
     try {
-      const { url } = await createCheckoutSession(packId);
+      // Send current page URL so Stripe redirects back to the right place
+      const returnUrl = window.location.href.split('?')[0]; // strip existing query params
+      const { url } = await createCheckoutSession(packId, returnUrl);
       const win = window.open(url, '_blank');
       return win;
     } catch (err) {
@@ -107,7 +113,7 @@ export function CreditProvider({ children }: { children: ReactNode }) {
 
   return (
     <CreditContext.Provider
-      value={{ balance, loading, error, canUseAI, purchaseCredits, refreshBalance, clearError }}
+      value={{ balance, loading, error, canUseAI, isFreeUser, purchaseCredits, refreshBalance, clearError }}
     >
       {children}
     </CreditContext.Provider>

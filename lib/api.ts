@@ -115,10 +115,20 @@ export function generateVisual(
   aspectRatio: string,
   imageSize: string,
   signal?: AbortSignal,
+  annotatedImageDataUrl?: string | null,
+  includeText?: boolean,
 ): Promise<GenerateResponse> {
   return callAPI<GenerateResponse>(
     '/generate',
-    { imageDataUrl, description, templateId, aspectRatio, imageSize },
+    {
+      imageDataUrl,
+      description,
+      templateId,
+      aspectRatio,
+      imageSize,
+      ...(annotatedImageDataUrl ? { annotatedImageDataUrl } : {}),
+      ...(includeText === false ? { includeText: false } : {}),
+    },
     signal,
     GENERATE_TIMEOUT_MS,
   );
@@ -166,8 +176,9 @@ export async function initCredits(): Promise<CreditBalance> {
 
 export async function createCheckoutSession(
   packId: string,
+  returnUrl: string,
 ): Promise<{ url: string; sessionId: string }> {
-  return callAPI<{ url: string; sessionId: string }>('/credits/checkout', { packId });
+  return callAPI<{ url: string; sessionId: string }>('/credits/checkout', { packId, returnUrl });
 }
 
 export async function getCreditPacks(): Promise<{ packs: Array<{ id: string; credits: number; price: number; label: string; perCredit: string }> }> {

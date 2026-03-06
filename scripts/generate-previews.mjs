@@ -55,6 +55,12 @@ const TEMPLATE_IDS = [
   "synthwave_80s",
   "grunge_90s",
   "y2k_2000s",
+  // Lifestyle
+  "hand_holding",
+  "in_use",
+  "flat_lay",
+  "on_display",
+  "unboxing",
 ];
 
 // --- Template prompts (analysis + image) imported inline to avoid TS compilation ---
@@ -86,6 +92,11 @@ const ANALYSIS_PROMPTS = {
   synthwave_80s: `You are an 80s pop culture creative director creating radical, high-energy copy for a synthwave visual. Create copy that channels Miami Vice, Top Gun, and arcade culture.`,
   grunge_90s: `You are a 90s zine maker creating raw, anti-establishment copy for a grunge-inspired visual. Create copy with 90s attitude — raw, authentic, anti-corporate.`,
   y2k_2000s: `You are a Y2K-era web designer creating futuristic, glossy copy for a millennium-inspired visual. Create copy that channels the year 2000 — glossy, optimistic, digital-futuristic.`,
+  hand_holding: `You are a lifestyle product photographer creating copy for a hand-holding product shot. Create warm, personal copy that makes the product feel approachable.`,
+  in_use: `You are a lifestyle product photographer creating copy for an in-use product shot. Create copy that shows the product being actively used in a real scenario.`,
+  flat_lay: `You are a lifestyle product photographer creating copy for a flat lay product shot. Create clean, organized copy that complements a top-down product arrangement.`,
+  on_display: `You are a lifestyle product photographer creating copy for a product display shot. Create elegant copy for a product beautifully placed in its natural environment.`,
+  unboxing: `You are a lifestyle product photographer creating copy for an unboxing experience shot. Create exciting copy that captures the thrill of opening a new product.`,
 };
 
 // Shared analysis instruction appended to all
@@ -658,6 +669,129 @@ LAYOUT:
 
 CRITICAL TEXT RULES:
 - Render each text element as if stamped, stenciled, or photocopied — distressed, imperfect, raw and authentic.
+- Render ALL text EXACTLY as provided — do not alter spelling, capitalization, or wording.
+- The headline text is: "{headline}"
+- The sub-headline text is: "{subHeadline}"
+- The tooltip text is: "{tooltipText}"
+- No gibberish text, extra floating letters, or misspelled words.`,
+
+  hand_holding: `Create a lifestyle product photography visual showing a hand holding the product from the provided screenshot.
+
+VISUAL STYLE — Hand Holding:
+- A real human hand naturally holding or presenting the product
+- Soft, warm lighting with shallow depth of field (blurred background)
+- Clean, lifestyle-appropriate background (coffee shop, desk, outdoors)
+- The product from the screenshot should be clearly recognizable
+- Natural skin tones and realistic hand positioning
+- Overall feel: authentic, personal, Instagram-worthy product photography
+
+LAYOUT:
+- Hand positioned naturally, holding the product at a slight angle
+- Product is the clear focal point — sharp focus on the product
+- Background softly blurred with warm bokeh
+- Headline text overlaid in clean, modern typography
+- Sub-headline below in lighter weight
+
+CRITICAL TEXT RULES:
+- Render each text element in clean, modern sans-serif typography.
+- Render ALL text EXACTLY as provided — do not alter spelling, capitalization, or wording.
+- The headline text is: "{headline}"
+- The sub-headline text is: "{subHeadline}"
+- The tooltip text is: "{tooltipText}"
+- No gibberish text, extra floating letters, or misspelled words.`,
+
+  in_use: `Create a lifestyle product photography visual showing the product from the provided screenshot being actively used.
+
+VISUAL STYLE — In Use:
+- Someone actively using/interacting with the product in a natural setting
+- Candid, authentic feel — not posed or staged
+- Warm, natural lighting
+- The product from the screenshot should be clearly visible and recognizable
+- Overall feel: real-world usage, authentic lifestyle photography
+
+LAYOUT:
+- Person naturally using the product — focus on the interaction
+- Product clearly visible and recognizable from the screenshot
+- Warm, inviting environment in the background
+- Headline overlaid in clean typography
+- Sub-headline below
+
+CRITICAL TEXT RULES:
+- Render each text element in clean, modern sans-serif typography.
+- Render ALL text EXACTLY as provided — do not alter spelling, capitalization, or wording.
+- The headline text is: "{headline}"
+- The sub-headline text is: "{subHeadline}"
+- The tooltip text is: "{tooltipText}"
+- No gibberish text, extra floating letters, or misspelled words.`,
+
+  flat_lay: `Create a flat lay product photography visual featuring the product from the provided screenshot.
+
+VISUAL STYLE — Flat Lay:
+- Top-down (bird's eye) camera angle
+- Product centered with complementary props arranged around it
+- Clean, organized composition on a textured surface (marble, wood, linen)
+- Consistent lighting from above — minimal shadows
+- Props relevant to the product category (stationery, plants, coffee, tech accessories)
+- Overall feel: Pinterest-worthy, organized, editorial flat lay
+
+LAYOUT:
+- Product from screenshot prominently centered
+- Supporting props arranged symmetrically or in golden ratio
+- Clean negative space for text placement
+- Headline overlaid in clean, modern typography
+- Sub-headline below
+
+CRITICAL TEXT RULES:
+- Render each text element in clean, modern sans-serif typography.
+- Render ALL text EXACTLY as provided — do not alter spelling, capitalization, or wording.
+- The headline text is: "{headline}"
+- The sub-headline text is: "{subHeadline}"
+- The tooltip text is: "{tooltipText}"
+- No gibberish text, extra floating letters, or misspelled words.`,
+
+  on_display: `Create a product display photography visual featuring the product from the provided screenshot.
+
+VISUAL STYLE — On Display:
+- Product elegantly placed on a shelf, table, or display stand
+- Beautiful environment that complements the product
+- Professional studio-quality lighting with soft shadows
+- The product from the screenshot should be the star of the scene
+- Overall feel: catalog photography, editorial product display
+
+LAYOUT:
+- Product beautifully positioned in an aspirational setting
+- Environment enhances the product's appeal
+- Professional lighting creating depth and dimension
+- Headline in elegant typography
+- Sub-headline below
+
+CRITICAL TEXT RULES:
+- Render each text element in clean, modern sans-serif typography.
+- Render ALL text EXACTLY as provided — do not alter spelling, capitalization, or wording.
+- The headline text is: "{headline}"
+- The sub-headline text is: "{subHeadline}"
+- The tooltip text is: "{tooltipText}"
+- No gibberish text, extra floating letters, or misspelled words.`,
+
+  unboxing: `Create an unboxing experience photography visual featuring the product from the provided screenshot.
+
+VISUAL STYLE — Unboxing:
+- Product emerging from or next to its packaging
+- Tissue paper, branded box, or premium packaging materials visible
+- Overhead or slight angle view capturing the unboxing moment
+- Warm, excited lighting — as if capturing a special moment
+- The product from the screenshot should be clearly recognizable
+- Overall feel: premium unboxing experience, social media share-worthy
+
+LAYOUT:
+- Product partially out of box or artfully arranged with packaging
+- Packaging materials (tissue, ribbons, branded elements) visible
+- Clean composition with the product as the focal point
+- Headline overlaid in clean typography
+- Sub-headline below
+
+CRITICAL TEXT RULES:
+- Render each text element in clean, modern sans-serif typography.
 - Render ALL text EXACTLY as provided — do not alter spelling, capitalization, or wording.
 - The headline text is: "{headline}"
 - The sub-headline text is: "{subHeadline}"

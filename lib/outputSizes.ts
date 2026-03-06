@@ -94,6 +94,65 @@ export function resolveGeminiConfig(w: number, h: number): { aspectRatio: string
   return { aspectRatio: closest.label, imageSize };
 }
 
+// --- Resize Compatibility ---
+
+/**
+ * Resize compatibility groups — presets that share a similar aspect ratio
+ * can be freely resized from the same Gemini output without significant crop loss.
+ * Max ~10% crop loss within a group.
+ */
+const RATIO_GROUPS: Record<string, string[]> = {
+  wide: ['16:9', '3:2'],       // 1.78 ↔ 1.5 (~8% crop)
+  standard: ['4:3', '1:1', '4:5', '5:4'],  // 1.33 ↔ 0.8 (up to ~17% but acceptable for resize)
+  tall: ['3:4', '2:3'],        // 0.75 ↔ 0.67 (~6% crop)
+  ultrawide: ['21:9'],
+  portrait: ['9:16'],
+};
+
+function getRatioGroup(aspectRatio: string): string | null {
+  for (const [group, ratios] of Object.entries(RATIO_GROUPS)) {
+    if (ratios.includes(aspectRatio)) return group;
+  }
+  return null;
+}
+
+export interface ResizeCompatibility {
+  compatible: boolean;
+  reason?: string;
+}
+
+/**
+ * Check if switching from one output config to another can be done
+ * via a free client-side resize (no re-generation needed).
+ */
+export function checkResizeCompatibility(
+  fromRatio: string,
+  fromSize: string,
+  toRatio: string,
+  toMaxDimension: number,
+): ResizeCompatibility {
+  const fromGroup = getRatioGroup(fromRatio);
+  const toGroup = getRatioGroup(toRatio);
+
+  if (!fromGroup || !toGroup || fromGroup !== toGroup) {
+    return {
+      compatible: false,
+      reason: 'Different aspect ratio group — regenerate for best results.',
+    };
+  }
+
+  // Check resolution: can we downscale or mildly upscale (up to 1.5x)?
+  const fromMaxPx = fromSize === '4K' ? 4096 : fromSize === '2K' ? 2048 : 1024;
+  if (toMaxDimension > fromMaxPx * 1.5) {
+    return {
+      compatible: false,
+      reason: 'Target resolution too high — regenerate for better quality.',
+    };
+  }
+
+  return { compatible: true };
+}
+
 // --- Client-Side Resize (cover-fit + center-crop) ---
 
 export function resizeImageToTarget(

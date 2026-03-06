@@ -206,6 +206,48 @@ export const presentationTemplates: PresentationTemplate[] = [
     category: 'decade',
     tags: ['2000s', 'y2k', 'glossy', '3d', 'chrome', 'bubble', 'ipod', 'imac', 'futuristic', 'millennium'],
   },
+
+  // --- Lifestyle ---
+  {
+    id: 'hand_holding',
+    name: 'Hand Holding',
+    description: 'Product held naturally in hand, clean background, hero product shot',
+    previewUrl: previewUrl('hand_holding'),
+    category: 'lifestyle',
+    tags: ['hand', 'holding', 'product', 'grip', 'showcase', 'bottle', 'box', 'device', 'cosmetics', 'lifestyle'],
+  },
+  {
+    id: 'in_use',
+    name: 'In Use',
+    description: 'Person actively using the product in a natural, everyday setting',
+    previewUrl: previewUrl('in_use'),
+    category: 'lifestyle',
+    tags: ['using', 'person', 'action', 'everyday', 'natural', 'food', 'tools', 'skincare', 'wearable', 'lifestyle'],
+  },
+  {
+    id: 'flat_lay',
+    name: 'Flat Lay',
+    description: 'Top-down product arrangement on styled surface with complementary items',
+    previewUrl: previewUrl('flat_lay'),
+    category: 'lifestyle',
+    tags: ['flat lay', 'overhead', 'styled', 'arrangement', 'surface', 'props', 'instagram', 'aesthetic', 'lifestyle'],
+  },
+  {
+    id: 'on_display',
+    name: 'On Display',
+    description: 'Product on shelf, counter, or desk in a real-world retail or home environment',
+    previewUrl: previewUrl('on_display'),
+    category: 'lifestyle',
+    tags: ['display', 'shelf', 'counter', 'desk', 'retail', 'store', 'home', 'environment', 'context', 'lifestyle'],
+  },
+  {
+    id: 'unboxing',
+    name: 'Unboxing',
+    description: 'Hands opening packaging with product emerging, premium reveal moment',
+    previewUrl: previewUrl('unboxing'),
+    category: 'lifestyle',
+    tags: ['unboxing', 'packaging', 'opening', 'reveal', 'premium', 'gift', 'hands', 'surprise', 'lifestyle'],
+  },
 ];
 
 /** Color accent per template for the visual indicator gradient */
@@ -239,6 +281,12 @@ export const templateColors: Record<string, { from: string; to: string }> = {
   synthwave_80s: { from: '#ec4899', to: '#06b6d4' },
   grunge_90s: { from: '#4a5e3a', to: '#8b4513' },
   y2k_2000s: { from: '#93c5fd', to: '#f9a8d4' },
+  // Lifestyle
+  hand_holding: { from: '#f59e0b', to: '#84cc16' },
+  in_use: { from: '#10b981', to: '#06b6d4' },
+  flat_lay: { from: '#f472b6', to: '#fbbf24' },
+  on_display: { from: '#8b5cf6', to: '#3b82f6' },
+  unboxing: { from: '#ef4444', to: '#f59e0b' },
 };
 
 /** Get templates filtered by category */

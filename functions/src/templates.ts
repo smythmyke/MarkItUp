@@ -118,7 +118,8 @@ IMPORTANT — INPUT PRIORITY:
 - The user's description is the PRIMARY source for messaging. It defines the product, value proposition, and what the marketing copy should say.
 - The screenshot is SECONDARY visual context. You may reference UI element names, labels, buttons, and layout details visible in the screenshot to enrich the copy.
 - If the user's description conflicts with or differs from text/branding visible in the screenshot, ALWAYS follow the user's description.
-- Do NOT derive the product name, headline, or core message from text that merely appears inside the screenshot (e.g. content within preview images, embedded text, third-party logos) — use the user's description instead.`;
+- Do NOT derive the product name, headline, or core message from text that merely appears inside the screenshot (e.g. content within preview images, embedded text, third-party logos) — use the user's description instead.
+- If the screenshot contains semi-transparent blue highlighted areas drawn by the user, these highlights indicate the specific UI elements or regions the user wants the marketing copy to focus on. Pay special attention to highlighted regions when choosing the highlightTarget and writing copy.`;
 
 const templates: Record<string, TemplatePrompts> = {
   glassmorphic: {
@@ -1109,6 +1110,222 @@ LAYOUT:
 
 ${TEXT_RULES_NEON}`,
   },
+
+  // ===== LIFESTYLE =====
+
+  hand_holding: {
+    id: "hand_holding",
+    name: "Hand Holding",
+    analysisPrompt: `You are a product photographer's creative director preparing a lifestyle product shot.
+
+Analyze the user's description and the screenshot to identify the product and plan a compelling hand-holding product photo.
+${DESCRIPTION_PRIORITY}
+
+Return a JSON object with these exact fields:
+{
+  "headline": "A bold, concise headline (5-8 words) that captures the product's appeal",
+  "subHeadline": "A supporting sentence (10-20 words) emphasizing a key benefit or feeling",
+  "highlightTarget": "Description of the product's most photogenic feature or detail to emphasize",
+  "tooltipText": "A short callout phrase (5-12 words) — a product highlight or tagline",
+  "marketingCopy": "One compelling sentence (15-25 words) that makes someone want to pick up this product"
+}
+
+Focus on tactile, sensory language — how the product feels, looks, and appeals when held.${SPELLING_REMINDER}`,
+
+    geminiPrompt: `Create a photorealistic lifestyle product photo using the product shown in the provided screenshot.
+
+VISUAL STYLE — Hand Holding:
+- A human hand naturally holding or gripping the product from the screenshot
+- The product must be clearly recognizable and match the one in the reference image
+- Clean, softly blurred background (studio, neutral, or contextual environment)
+- Professional product photography lighting — soft key light, gentle fill, subtle rim light
+- The hand should look natural and relaxed, not stiff or posed
+- Shallow depth of field focusing on the product
+- Warm, inviting color grade
+
+LAYOUT:
+- Product held in center or slightly off-center, occupying 40-60% of the frame
+- Hand enters from bottom or side naturally
+- Headline text positioned at top or bottom in clean, modern typography
+- Sub-headline near the headline in lighter weight
+- Tooltip as a small floating badge near the product's key feature
+- Keep composition clean and commercial — this is a hero product shot
+
+${TEXT_RULES_CLEAN}`,
+  },
+
+  in_use: {
+    id: "in_use",
+    name: "In Use",
+    analysisPrompt: `You are a lifestyle brand creative director planning an in-use product photography shoot.
+
+Analyze the user's description and the screenshot to identify the product and plan a natural usage scene.
+${DESCRIPTION_PRIORITY}
+
+Return a JSON object with these exact fields:
+{
+  "headline": "A bold, concise headline (5-8 words) that captures the product experience",
+  "subHeadline": "A supporting sentence (10-20 words) about the benefit the user is experiencing",
+  "highlightTarget": "Description of the key moment of product interaction to focus on",
+  "tooltipText": "A short callout phrase (5-12 words) — an experience or benefit highlight",
+  "marketingCopy": "One compelling sentence (15-25 words) showing the product improving someone's life"
+}
+
+Focus on the experience and emotion of using the product — not just features.${SPELLING_REMINDER}`,
+
+    geminiPrompt: `Create a photorealistic lifestyle scene showing a person actively using the product from the provided screenshot.
+
+VISUAL STYLE — In Use:
+- A person naturally using/interacting with the product in a real-world setting
+- The product must be clearly recognizable and match the one in the reference image
+- Natural, candid feel — not overly posed or stiff
+- Environment matches the product's context (kitchen, office, outdoors, bathroom, etc.)
+- Warm, natural lighting — window light, golden hour, or soft ambient
+- Lifestyle photography aesthetic — editorial, aspirational, relatable
+- Person partially visible (hands, torso, profile) — focus stays on the product interaction
+
+LAYOUT:
+- Product and interaction are the focal point, centered or rule-of-thirds positioned
+- Person provides context but doesn't dominate — product is the hero
+- Headline text positioned in open space (top, bottom, or side)
+- Sub-headline near the headline in lighter weight
+- Tooltip as a callout near the product or interaction point
+- Composition should feel like a lifestyle brand ad or Instagram post
+
+${TEXT_RULES_CLEAN}`,
+  },
+
+  flat_lay: {
+    id: "flat_lay",
+    name: "Flat Lay",
+    analysisPrompt: `You are an Instagram content strategist planning a styled flat lay product photo.
+
+Analyze the user's description and the screenshot to identify the product and plan a curated flat lay composition.
+${DESCRIPTION_PRIORITY}
+
+Return a JSON object with these exact fields:
+{
+  "headline": "A bold, concise headline (5-8 words) that captures the product's lifestyle appeal",
+  "subHeadline": "A supporting sentence (10-20 words) about the curated lifestyle the product fits into",
+  "highlightTarget": "Description of the product's placement and what surrounds it in the flat lay",
+  "tooltipText": "A short callout phrase (5-12 words) — a lifestyle or aesthetic highlight",
+  "marketingCopy": "One compelling sentence (15-25 words) that positions the product within a desirable lifestyle"
+}
+
+Think curated, aesthetic, Instagram-worthy. The product should feel like part of a beautiful scene.${SPELLING_REMINDER}`,
+
+    geminiPrompt: `Create a photorealistic overhead flat lay product photo featuring the product from the provided screenshot.
+
+VISUAL STYLE — Flat Lay:
+- Top-down (bird's eye) camera angle looking straight down at a styled surface
+- The product from the screenshot is the centerpiece, clearly recognizable
+- Complementary props arranged around the product (relevant to its category):
+  - For beauty/cosmetics: flowers, fabric, brushes, natural elements
+  - For food/drink: ingredients, utensils, linen, herbs
+  - For tech: accessories, notebook, coffee, earbuds
+  - For general: plants, fabric texture, geometric objects, lifestyle items
+- Surface texture: marble, wood, linen, concrete, or pastel paper
+- Soft, even overhead lighting with minimal shadows
+- Clean, organized yet effortlessly curated arrangement
+- Instagram-worthy aesthetic — aspirational and shareable
+
+LAYOUT:
+- Product centered with props creating a balanced frame around it
+- Generous negative space for text placement
+- Headline text in open area, clean modern typography
+- Sub-headline nearby in lighter weight
+- Tooltip as a small tag or badge near the product
+- Overall composition feels like a premium lifestyle brand post
+
+${TEXT_RULES_CLEAN}`,
+  },
+
+  on_display: {
+    id: "on_display",
+    name: "On Display",
+    analysisPrompt: `You are a retail visual merchandiser planning an in-context product display photo.
+
+Analyze the user's description and the screenshot to identify the product and plan a real-world display setting.
+${DESCRIPTION_PRIORITY}
+
+Return a JSON object with these exact fields:
+{
+  "headline": "A bold, concise headline (5-8 words) that positions the product in its natural environment",
+  "subHeadline": "A supporting sentence (10-20 words) about the product's presence and quality",
+  "highlightTarget": "Description of how the product should be positioned in its display context",
+  "tooltipText": "A short callout phrase (5-12 words) — a quality or placement highlight",
+  "marketingCopy": "One compelling sentence (15-25 words) about why this product belongs in the viewer's space"
+}
+
+Think retail display, shelf presence, or home context — the product should look like it belongs.${SPELLING_REMINDER}`,
+
+    geminiPrompt: `Create a photorealistic scene showing the product from the provided screenshot displayed in a real-world setting.
+
+VISUAL STYLE — On Display:
+- Product placed on a shelf, counter, desk, or retail display in a realistic environment
+- The product must be clearly recognizable and match the one in the reference image
+- Environment matches the product's category:
+  - For food/drink: kitchen counter, café shelf, pantry
+  - For beauty: bathroom shelf, vanity, boutique display
+  - For tech: desk setup, retail shelf, modern workspace
+  - For home goods: living room shelf, styled bookcase, bedside table
+- Natural or commercial lighting appropriate to the environment
+- Other items in the scene provide context but don't compete with the product
+- Shallow depth of field with product in sharp focus, background slightly soft
+- Commercial photography quality — clean, aspirational, realistic
+
+LAYOUT:
+- Product prominently placed, occupying 30-50% of the frame
+- Environment provides visual storytelling context
+- Headline text in open area or overlaid with subtle background
+- Sub-headline near the headline
+- Tooltip as a floating callout near the product
+- Composition feels like an e-commerce lifestyle shot or catalog image
+
+${TEXT_RULES_CLEAN}`,
+  },
+
+  unboxing: {
+    id: "unboxing",
+    name: "Unboxing",
+    analysisPrompt: `You are a premium brand experience designer planning an unboxing reveal shot.
+
+Analyze the user's description and the screenshot to identify the product and plan an exciting unboxing moment.
+${DESCRIPTION_PRIORITY}
+
+Return a JSON object with these exact fields:
+{
+  "headline": "A bold, concise headline (5-8 words) that captures the excitement of discovery",
+  "subHeadline": "A supporting sentence (10-20 words) about the premium reveal experience",
+  "highlightTarget": "Description of the unboxing moment — what's being revealed and how",
+  "tooltipText": "A short callout phrase (5-12 words) — excitement, quality, or surprise element",
+  "marketingCopy": "One compelling sentence (15-25 words) that makes someone excited to open this product"
+}
+
+Emphasize anticipation, premium feel, and the joy of discovery.${SPELLING_REMINDER}`,
+
+    geminiPrompt: `Create a photorealistic unboxing scene featuring the product from the provided screenshot.
+
+VISUAL STYLE — Unboxing:
+- Hands opening packaging with the product partially or fully revealed
+- The product must be clearly recognizable and match the one in the reference image
+- Premium packaging feel — clean box, tissue paper, branded elements
+- Warm, inviting lighting that highlights the reveal moment
+- Overhead or slightly angled perspective showing the unboxing action
+- The scene should convey excitement, anticipation, and premium quality
+- Clean surface underneath (table, desk, or styled background)
+- Hands look natural and engaged in the unwrapping moment
+
+LAYOUT:
+- Unboxing action centered, product emerging as the focal point
+- Packaging and hands create a natural frame around the product
+- Headline text positioned in open space around the scene
+- Sub-headline near the headline in lighter weight
+- Tooltip as a callout near the product or packaging detail
+- Composition should feel like a premium brand's social media reveal post
+
+${TEXT_RULES_CLEAN}`,
+  },
 };
 
 /**
@@ -1135,12 +1352,30 @@ export function buildImagePrompt(
     headline: string;
     subHeadline: string;
     tooltipText: string;
+    highlightBox?: {
+      xPercent: number;
+      yPercent: number;
+      widthPercent: number;
+      heightPercent: number;
+    };
   }
 ): string {
-  return template.geminiPrompt
+  let prompt = template.geminiPrompt
     .replace("{headline}", analysis.headline)
     .replace("{subHeadline}", analysis.subHeadline)
     .replace("{tooltipText}", analysis.tooltipText);
+
+  if (analysis.highlightBox) {
+    const b = analysis.highlightBox;
+    const centerX = Math.round(b.xPercent + b.widthPercent / 2);
+    const centerY = Math.round(b.yPercent + b.heightPercent / 2);
+    prompt += `\n\nCALLOUT PLACEMENT — MANDATORY:
+The user specifically highlighted a region of the screenshot. The tooltip/callout MUST point to this exact area.
+The highlighted region is located at approximately ${centerX}% from the left edge and ${centerY}% from the top of the screenshot.
+Position the tooltip arrow, callout badge, or highlight indicator so it clearly points at this specific region within the screenshot — not elsewhere.`;
+  }
+
+  return prompt;
 }
 
 /**

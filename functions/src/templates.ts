@@ -107,13 +107,27 @@ const TEXT_RULES_COLLAGE = `CRITICAL TEXT RULES:
 - The tooltip text is: "{tooltipText}" — render this on a sticker-like badge or stamp.
 - Ensure there is no gibberish text, extra floating letters, or misspelled words anywhere in the image.`;
 
+// ---------------------------------------------------------------------------
+// Shared instruction block that establishes the priority hierarchy between
+// the user's description and the screenshot content for text analysis.
+// Appended to every template's analysisPrompt via the "Analyze..." line.
+// ---------------------------------------------------------------------------
+
+const DESCRIPTION_PRIORITY = `
+IMPORTANT — INPUT PRIORITY:
+- The user's description is the PRIMARY source for messaging. It defines the product, value proposition, and what the marketing copy should say.
+- The screenshot is SECONDARY visual context. You may reference UI element names, labels, buttons, and layout details visible in the screenshot to enrich the copy.
+- If the user's description conflicts with or differs from text/branding visible in the screenshot, ALWAYS follow the user's description.
+- Do NOT derive the product name, headline, or core message from text that merely appears inside the screenshot (e.g. content within preview images, embedded text, third-party logos) — use the user's description instead.`;
+
 const templates: Record<string, TemplatePrompts> = {
   glassmorphic: {
     id: "glassmorphic",
     name: "Glassmorphic",
     analysisPrompt: `You are a marketing copywriter analyzing a software screenshot for a SaaS marketing visual.
 
-Analyze the screenshot and the user's description to produce compelling marketing copy. Focus on the key value proposition visible in the UI.
+Analyze the user's description and the screenshot to produce compelling marketing copy.
+${DESCRIPTION_PRIORITY}
 
 Return a JSON object with these exact fields:
 {
@@ -124,7 +138,7 @@ Return a JSON object with these exact fields:
   "marketingCopy": "One compelling sentence (15-25 words) that could serve as body copy"
 }
 
-Write text that is accurate to what's shown in the screenshot. Do not invent features not visible in the image. Be specific and action-oriented.${SPELLING_REMINDER}`,
+Be specific and action-oriented. Ground your copy in the user's description first, then enrich with details visible in the screenshot.${SPELLING_REMINDER}`,
 
     geminiPrompt: `Create a stunning glassmorphic marketing visual using the provided screenshot and text.
 
@@ -152,7 +166,8 @@ ${TEXT_RULES_CLEAN}`,
     name: "Clean Minimal",
     analysisPrompt: `You are a technical writer creating clear, informative copy for a documentation or blog visual.
 
-Analyze the screenshot and the user's description. Focus on clarity and precision — this will be used in tutorials, docs, or blog posts.
+Analyze the user's description and the screenshot. Focus on clarity and precision — this will be used in tutorials, docs, or blog posts.
+${DESCRIPTION_PRIORITY}
 
 Return a JSON object with these exact fields:
 {
@@ -190,7 +205,8 @@ ${TEXT_RULES_CLEAN}`,
     name: "Bold Marketing",
     analysisPrompt: `You are an advertising copywriter creating punchy, high-energy marketing copy for a product visual.
 
-Analyze the screenshot and the user's description. Create copy that grabs attention and drives action — this will be used for social media, ads, or landing pages.
+Analyze the user's description and the screenshot. Create copy that grabs attention and drives action — this will be used for social media, ads, or landing pages.
+${DESCRIPTION_PRIORITY}
 
 Return a JSON object with these exact fields:
 {
@@ -230,7 +246,8 @@ ${TEXT_RULES_BOLD}`,
     name: "Dark Professional",
     analysisPrompt: `You are a business communications expert creating executive-quality copy for a product showcase.
 
-Analyze the screenshot and the user's description. Create polished, professional copy suitable for pitch decks, case studies, or enterprise marketing.
+Analyze the user's description and the screenshot. Create polished, professional copy suitable for pitch decks, case studies, or enterprise marketing.
+${DESCRIPTION_PRIORITY}
 
 Return a JSON object with these exact fields:
 {
@@ -269,7 +286,8 @@ ${TEXT_RULES_ELEGANT}`,
     name: "Documentation",
     analysisPrompt: `You are a UX writer creating clear instructional copy for a help document or onboarding guide.
 
-Analyze the screenshot and the user's description. Create copy that helps users understand a feature — this will be used in help docs, onboarding flows, or how-to guides.
+Analyze the user's description and the screenshot. Create copy that helps users understand a feature — this will be used in help docs, onboarding flows, or how-to guides.
+${DESCRIPTION_PRIORITY}
 
 Return a JSON object with these exact fields:
 {
@@ -310,7 +328,8 @@ ${TEXT_RULES_CLEAN}`,
     name: "Device Mockup",
     analysisPrompt: `You are a product marketing specialist creating copy for a device mockup visual.
 
-Analyze the screenshot and the user's description. Create compelling copy that positions the product as premium and professional — this will be shown inside a realistic device frame.
+Analyze the user's description and the screenshot. Create compelling copy that positions the product as premium and professional — this will be shown inside a realistic device frame.
+${DESCRIPTION_PRIORITY}
 
 Return a JSON object with these exact fields:
 {
@@ -349,7 +368,8 @@ ${TEXT_RULES_CLEAN}`,
     name: "Gradient Noise",
     analysisPrompt: `You are an indie product designer creating warm, tactile copy for a product visual.
 
-Analyze the screenshot and the user's description. Create copy with a friendly, approachable tone — this will be used for indie product showcases, dribbble shots, or landing pages.
+Analyze the user's description and the screenshot. Create copy with a friendly, approachable tone — this will be used for indie product showcases, dribbble shots, or landing pages.
+${DESCRIPTION_PRIORITY}
 
 Return a JSON object with these exact fields:
 {
@@ -387,7 +407,8 @@ ${TEXT_RULES_WARM}`,
     name: "App Store",
     analysisPrompt: `You are a mobile app marketer creating copy for an app store screenshot visual.
 
-Analyze the screenshot and the user's description. Create punchy, app-store-optimized copy — short, scannable, benefit-focused. This will appear in an app store listing format.
+Analyze the user's description and the screenshot. Create punchy, app-store-optimized copy — short, scannable, benefit-focused. This will appear in an app store listing format.
+${DESCRIPTION_PRIORITY}
 
 Return a JSON object with these exact fields:
 {
@@ -426,7 +447,8 @@ ${TEXT_RULES_BOLD}`,
     name: "Cinematic Aurora",
     analysisPrompt: `You are a luxury brand strategist creating elevated, premium copy for a cinematic visual.
 
-Analyze the screenshot and the user's description. Create sophisticated, aspirational copy — this will appear in a cinematic, aurora-lit environment.
+Analyze the user's description and the screenshot. Create sophisticated, aspirational copy — this will appear in a cinematic, aurora-lit environment.
+${DESCRIPTION_PRIORITY}
 
 Return a JSON object with these exact fields:
 {
@@ -465,7 +487,8 @@ ${TEXT_RULES_ELEGANT}`,
     name: "Corporate Clean",
     analysisPrompt: `You are a corporate communications writer creating professional copy for an enterprise presentation.
 
-Analyze the screenshot and the user's description. Create polished, corporate-appropriate copy — this will be used in presentations, white papers, or enterprise marketing.
+Analyze the user's description and the screenshot. Create polished, corporate-appropriate copy — this will be used in presentations, white papers, or enterprise marketing.
+${DESCRIPTION_PRIORITY}
 
 Return a JSON object with these exact fields:
 {
@@ -505,7 +528,8 @@ ${TEXT_RULES_CLEAN}`,
     name: "Bento Grid",
     analysisPrompt: `You are a product designer creating concise copy for a bento-grid feature showcase.
 
-Analyze the screenshot and the user's description. Create short, scannable copy — each piece will appear in a separate tile of a bento grid layout.
+Analyze the user's description and the screenshot. Create short, scannable copy — each piece will appear in a separate tile of a bento grid layout.
+${DESCRIPTION_PRIORITY}
 
 Return a JSON object with these exact fields:
 {
@@ -544,7 +568,8 @@ ${TEXT_RULES_BOLD}`,
     name: "Blueprint",
     analysisPrompt: `You are a technical documentation engineer creating precise, technical copy for a blueprint-style visual.
 
-Analyze the screenshot and the user's description. Create technical, specification-style copy — this will appear in an engineering diagram aesthetic.
+Analyze the user's description and the screenshot. Create technical, specification-style copy — this will appear in an engineering diagram aesthetic.
+${DESCRIPTION_PRIORITY}
 
 Return a JSON object with these exact fields:
 {
@@ -583,7 +608,8 @@ ${TEXT_RULES_TECHNICAL}`,
     name: "Terminal Dark",
     analysisPrompt: `You are a developer advocate creating dev-friendly copy for a terminal-inspired visual.
 
-Analyze the screenshot and the user's description. Create copy with a developer tone — concise, slightly witty, and technically credible. This will appear in a terminal/code aesthetic.
+Analyze the user's description and the screenshot. Create copy with a developer tone — concise, slightly witty, and technically credible. This will appear in a terminal/code aesthetic.
+${DESCRIPTION_PRIORITY}
 
 Return a JSON object with these exact fields:
 {
@@ -624,7 +650,8 @@ ${TEXT_RULES_TECHNICAL}`,
     name: "Neo Brutalist",
     analysisPrompt: `You are an indie creative director creating bold, irreverent copy for a neo-brutalist visual.
 
-Analyze the screenshot and the user's description. Create punchy, bold copy with attitude — this will appear in a raw, high-contrast brutalist design.
+Analyze the user's description and the screenshot. Create punchy, bold copy with attitude — this will appear in a raw, high-contrast brutalist design.
+${DESCRIPTION_PRIORITY}
 
 Return a JSON object with these exact fields:
 {
@@ -665,7 +692,8 @@ ${TEXT_RULES_BOLD}`,
     name: "Retro Futurism",
     analysisPrompt: `You are a creative director creating dramatic, cinematic copy for a retro-futuristic visual.
 
-Analyze the screenshot and the user's description. Create copy that feels like a sci-fi movie poster — dramatic, futuristic, with a vintage edge.
+Analyze the user's description and the screenshot. Create copy that feels like a sci-fi movie poster — dramatic, futuristic, with a vintage edge.
+${DESCRIPTION_PRIORITY}
 
 Return a JSON object with these exact fields:
 {
@@ -705,7 +733,8 @@ ${TEXT_RULES_NEON}`,
     name: "Collage Mixed",
     analysisPrompt: `You are an art director creating eclectic, creative copy for a mixed-media collage visual.
 
-Analyze the screenshot and the user's description. Create expressive, creative copy — this will appear in a layered, textured collage composition.
+Analyze the user's description and the screenshot. Create expressive, creative copy — this will appear in a layered, textured collage composition.
+${DESCRIPTION_PRIORITY}
 
 Return a JSON object with these exact fields:
 {
@@ -748,7 +777,8 @@ ${TEXT_RULES_COLLAGE}`,
     name: "Psychedelic 60s",
     analysisPrompt: `You are a counterculture poster artist creating groovy, expressive copy for a psychedelic visual.
 
-Analyze the screenshot and the user's description. Create copy that channels the spirit of the 1960s — peace, love, freedom, and mind-expansion. This will appear in a swirling, colorful psychedelic poster composition.
+Analyze the user's description and the screenshot. Create copy that channels the spirit of the 1960s — peace, love, freedom, and mind-expansion. This will appear in a swirling, colorful psychedelic poster composition.
+${DESCRIPTION_PRIORITY}
 
 Return a JSON object with these exact fields:
 {
@@ -788,7 +818,8 @@ ${TEXT_RULES_PSYCHEDELIC}`,
     name: "Disco 70s",
     analysisPrompt: `You are a disco-era graphic designer creating funky, glamorous copy for a 1970s-inspired visual.
 
-Analyze the screenshot and the user's description. Create copy that channels Saturday Night Fever — glamorous, funky, and golden. This will appear in a disco-era composition with metallic accents and warm earth tones.
+Analyze the user's description and the screenshot. Create copy that channels Saturday Night Fever — glamorous, funky, and golden. This will appear in a disco-era composition with metallic accents and warm earth tones.
+${DESCRIPTION_PRIORITY}
 
 Return a JSON object with these exact fields:
 {
@@ -829,7 +860,8 @@ ${TEXT_RULES_NEON}`,
     name: "Synthwave 80s",
     analysisPrompt: `You are an 80s pop culture creative director creating radical, high-energy copy for a synthwave visual.
 
-Analyze the screenshot and the user's description. Create copy that channels Miami Vice, Top Gun, and arcade culture — neon-drenched, high-energy, and totally radical. This will appear in a full synthwave 80s composition.
+Analyze the user's description and the screenshot. Create copy that channels Miami Vice, Top Gun, and arcade culture — neon-drenched, high-energy, and totally radical. This will appear in a full synthwave 80s composition.
+${DESCRIPTION_PRIORITY}
 
 Return a JSON object with these exact fields:
 {
@@ -871,7 +903,8 @@ ${TEXT_RULES_NEON}`,
     name: "Grunge 90s",
     analysisPrompt: `You are a 90s zine maker creating raw, anti-establishment copy for a grunge-inspired visual.
 
-Analyze the screenshot and the user's description. Create copy with 90s attitude — raw, authentic, anti-corporate. This will appear in a grungy, distressed composition that looks photocopied and DIY.
+Analyze the user's description and the screenshot. Create copy with 90s attitude — raw, authentic, anti-corporate. This will appear in a grungy, distressed composition that looks photocopied and DIY.
+${DESCRIPTION_PRIORITY}
 
 Return a JSON object with these exact fields:
 {
@@ -912,7 +945,8 @@ ${TEXT_RULES_GRUNGE}`,
     name: "Y2K 2000s",
     analysisPrompt: `You are a Y2K-era web designer creating futuristic, glossy copy for a millennium-inspired visual.
 
-Analyze the screenshot and the user's description. Create copy that channels the year 2000 — glossy, optimistic, digital-futuristic. This will appear in a Y2K aesthetic with 3D effects, translucent plastic, and iridescent colors.
+Analyze the user's description and the screenshot. Create copy that channels the year 2000 — glossy, optimistic, digital-futuristic. This will appear in a Y2K aesthetic with 3D effects, translucent plastic, and iridescent colors.
+${DESCRIPTION_PRIORITY}
 
 Return a JSON object with these exact fields:
 {
@@ -955,7 +989,8 @@ ${TEXT_RULES_CLEAN}`,
     name: "Comic Book",
     analysisPrompt: `You are a comic book letterer and cover artist creating punchy, action-packed copy for a comic-style visual.
 
-Analyze the screenshot and the user's description. Create copy with comic book energy — bold, dramatic, action-packed. This will appear in a classic comic book panel composition with halftone dots and bold outlines.
+Analyze the user's description and the screenshot. Create copy with comic book energy — bold, dramatic, action-packed. This will appear in a classic comic book panel composition with halftone dots and bold outlines.
+${DESCRIPTION_PRIORITY}
 
 Return a JSON object with these exact fields:
 {
@@ -996,7 +1031,8 @@ ${TEXT_RULES_COMIC}`,
     name: "Vintage Polaroid",
     analysisPrompt: `You are a nostalgic photographer creating warm, personal copy for a vintage photo-style visual.
 
-Analyze the screenshot and the user's description. Create copy that feels personal, authentic, and nostalgic — like a treasured photo with a handwritten note. This will appear in a warm, faded Polaroid composition.
+Analyze the user's description and the screenshot. Create copy that feels personal, authentic, and nostalgic — like a treasured photo with a handwritten note. This will appear in a warm, faded Polaroid composition.
+${DESCRIPTION_PRIORITY}
 
 Return a JSON object with these exact fields:
 {
@@ -1037,7 +1073,8 @@ ${TEXT_RULES_WARM}`,
     name: "Vaporwave",
     analysisPrompt: `You are a vaporwave aesthetic curator creating dreamy, ironic, internet-nostalgia copy for a surreal visual.
 
-Analyze the screenshot and the user's description. Create copy that channels vaporwave — dreamy, surreal, with a touch of irony and internet nostalgia. This will appear in a pastel-neon, glitch-art composition.
+Analyze the user's description and the screenshot. Create copy that channels vaporwave — dreamy, surreal, with a touch of irony and internet nostalgia. This will appear in a pastel-neon, glitch-art composition.
+${DESCRIPTION_PRIORITY}
 
 Return a JSON object with these exact fields:
 {

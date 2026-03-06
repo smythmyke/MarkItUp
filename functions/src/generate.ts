@@ -12,6 +12,8 @@ interface GenerateBody {
   imageSize?: string;
   annotatedImageDataUrl?: string;
   includeText?: boolean;
+  targetWidth?: number;
+  targetHeight?: number;
 }
 
 interface HighlightBox {
@@ -83,8 +85,59 @@ Use the angle to create visual movement and break the static grid.`,
  * Ensures text/content stays inset from edges so cover-fit cropping
  * (due to Gemini aspect ratio vs target size mismatch) never clips content.
  */
-const SAFE_ZONE = `SAFE ZONE — MANDATORY:
-Keep ALL text, headlines, sub-headlines, tooltips, logos, UI elements, and important visual content at least 5% inset from EVERY edge of the image. The outer 5% margin on all four sides must contain only background, gradients, or decorative elements — NEVER text or critical content. This ensures clean cropping at any aspect ratio.`;
+const BASE_SAFE_ZONE_PCT = 5;
+
+/**
+ * Gemini aspect ratio string → numeric value.
+ */
+const GEMINI_RATIO_VALUES: Record<string, number> = {
+  "1:1": 1, "3:2": 1.5, "2:3": 2 / 3, "3:4": 0.75, "4:3": 4 / 3,
+  "4:5": 0.8, "5:4": 1.25, "9:16": 9 / 16, "16:9": 16 / 9, "21:9": 21 / 9,
+};
+
+/**
+ * Build a dynamic safe zone directive based on expected crop.
+ * When the Gemini output ratio differs from the target, we know which edges
+ * will be cropped and by how much, so we increase the buffer on those edges.
+ * Only adds extra buffer for crops >= 6%.
+ */
+function buildSafeZone(aspectRatio?: string, targetWidth?: number, targetHeight?: number): string {
+  const base = BASE_SAFE_ZONE_PCT;
+  let topBottom = base;
+  let leftRight = base;
+
+  if (aspectRatio && targetWidth && targetHeight) {
+    const geminiRatio = GEMINI_RATIO_VALUES[aspectRatio];
+    const targetRatio = targetWidth / targetHeight;
+
+    if (geminiRatio && targetRatio) {
+      if (geminiRatio > targetRatio) {
+        // Gemini is wider → sides get cropped
+        const cropPct = Math.round(((geminiRatio - targetRatio) / geminiRatio) * 100);
+        if (cropPct >= 6) {
+          leftRight = base + cropPct;
+        }
+      } else if (geminiRatio < targetRatio) {
+        // Gemini is taller → top/bottom get cropped
+        const cropPct = Math.round(((1 / geminiRatio - 1 / targetRatio) / (1 / geminiRatio)) * 100);
+        if (cropPct >= 6) {
+          topBottom = base + cropPct;
+        }
+      }
+    }
+  }
+
+  if (topBottom === base && leftRight === base) {
+    return `SAFE ZONE — MANDATORY:
+Keep ALL text, headlines, sub-headlines, tooltips, logos, UI elements, and important visual content at least ${base}% inset from EVERY edge of the image. The outer ${base}% margin on all four sides must contain only background, gradients, or decorative elements — NEVER text or critical content. This ensures clean cropping at any aspect ratio.`;
+  }
+
+  return `SAFE ZONE — MANDATORY:
+Keep ALL text, headlines, sub-headlines, tooltips, logos, UI elements, and important visual content well inset from the edges.
+- LEFT and RIGHT edges: keep at least ${leftRight}% inset from each side.
+- TOP and BOTTOM edges: keep at least ${topBottom}% inset from each edge.
+These margins must contain only background, gradients, or decorative elements — NEVER text or critical content. This ensures clean cropping at the target aspect ratio.`;
+}
 
 const SCENIC_VARIATION_DIRECTIVES: string[] = [
   // V1: Clean Showcase
@@ -313,6 +366,7 @@ async function runGeminiGeneration(
   imageSize?: string,
   scenic?: boolean,
   templateId?: string,
+  safeZone?: string,
 ): Promise<string | null> {
   console.log(`runGeminiGeneration[${variationIndex}]: starting`, {
     mediaType,
@@ -361,7 +415,7 @@ async function runGeminiGeneration(
         },
       },
       {
-        text: `${SAFE_ZONE}\n\n${layoutDirective}\n\n${imagePrompt}\n\n${closingInstruction}`,
+        text: `${safeZone || buildSafeZone()}\n\n${layoutDirective}\n\n${imagePrompt}\n\n${closingInstruction}`,
       },
     ]);
 
@@ -441,7 +495,7 @@ export async function handleGenerateRequest(
   body: GenerateBody,
   user: admin.auth.DecodedIdToken
 ): Promise<GenerateResult> {
-  const { imageDataUrl, description, templateId, aspectRatio, imageSize, annotatedImageDataUrl, includeText } = body;
+  const { imageDataUrl, description, templateId, aspectRatio, imageSize, annotatedImageDataUrl, includeText, targetWidth, targetHeight } = body;
 
   if (!imageDataUrl || !templateId) {
     throw new functions.https.HttpsError(
@@ -531,9 +585,11 @@ export async function handleGenerateRequest(
 
   console.log(`Generate: Step 2 — Gemini rendering × 2`);
 
+  const safeZone = buildSafeZone(aspectRatio, targetWidth, targetHeight);
+
   // Run 2 generations in parallel
   const variationPromises = [0, 1].map((i) =>
-    runGeminiGeneration(genAI, base64Data, mediaType, imagePrompt, i, aspectRatio, imageSize, scenic, templateId)
+    runGeminiGeneration(genAI, base64Data, mediaType, imagePrompt, i, aspectRatio, imageSize, scenic, templateId, safeZone)
   );
 
   const variationResults = await Promise.all(variationPromises);
@@ -561,7 +617,7 @@ export async function handleGenerateRequest(
   if (!scenic && analysisResult) {
     console.log("Generate: Step 3 — Auto-OCR text validation");
     variations = await autoOcrAndRetry(
-      genAI, variations, analysisResult, base64Data, mediaType, imagePrompt, aspectRatio, imageSize, templateId
+      genAI, variations, analysisResult, base64Data, mediaType, imagePrompt, aspectRatio, imageSize, templateId, safeZone
     );
   }
 
@@ -587,6 +643,7 @@ async function autoOcrAndRetry(
   aspectRatio?: string,
   imageSize?: string,
   templateId?: string,
+  safeZone?: string,
 ): Promise<string[]> {
   // OCR all variations in parallel
   const ocrPromises = variations.map((v, i) => {
@@ -618,7 +675,7 @@ async function autoOcrAndRetry(
     const correctedPrompt = imagePrompt + correctionSuffix;
 
     retryPromises[i] = runGeminiGeneration(
-      genAI, base64Data, mediaType, correctedPrompt, i, aspectRatio, imageSize, false, templateId
+      genAI, base64Data, mediaType, correctedPrompt, i, aspectRatio, imageSize, false, templateId, safeZone
     );
   }
 
@@ -827,8 +884,9 @@ export async function handleRegenRequest(
     currentText = textAnalysis;
   }
 
+  const regenSafeZone = buildSafeZone(aspectRatio, undefined, undefined);
   const variation = await runGeminiGeneration(
-    genAI, base64Data, mediaType, imagePrompt, variationIndex, aspectRatio, imageSize, scenic, templateId
+    genAI, base64Data, mediaType, imagePrompt, variationIndex, aspectRatio, imageSize, scenic, templateId, regenSafeZone
   );
 
   if (!variation) {

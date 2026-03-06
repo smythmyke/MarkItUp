@@ -31,15 +31,15 @@ export const OUTPUT_SIZE_PRESETS: OutputSizePreset[] = [
   { id: 'pinterest', label: 'Pinterest Pin', platform: 'Pinterest', width: 1000, height: 1500, category: 'marketing', geminiAspectRatio: '2:3', geminiImageSize: '2K' },
   // Product
   { id: 'product_hd', label: 'Product HD', platform: 'Product', width: 2000, height: 2000, category: 'product', geminiAspectRatio: '1:1', geminiImageSize: '2K' },
-  { id: 'product_hunt', label: 'Product Hunt', platform: 'Product Hunt', width: 1270, height: 760, category: 'product', geminiAspectRatio: '3:2', geminiImageSize: '2K' },
+  { id: 'product_hunt', label: 'Product Hunt', platform: 'Product Hunt', width: 1270, height: 760, category: 'product', geminiAspectRatio: '16:9', geminiImageSize: '2K' },
   { id: 'dribbble', label: 'Dribbble Shot', platform: 'Dribbble', width: 2800, height: 2100, category: 'product', geminiAspectRatio: '4:3', geminiImageSize: '4K' },
   // Banners
   { id: 'twitter_banner', label: 'Twitter/X Banner', platform: 'Twitter', width: 1500, height: 500, category: 'banners', geminiAspectRatio: '21:9', geminiImageSize: '2K' },
   { id: 'yt_banner', label: 'YouTube Banner', platform: 'YouTube', width: 2560, height: 1440, category: 'banners', geminiAspectRatio: '16:9', geminiImageSize: '4K' },
   // Store Assets
-  { id: 'chrome_screenshot', label: 'Chrome Screenshot', platform: 'Chrome Store', width: 1280, height: 800, category: 'store', geminiAspectRatio: '16:9', geminiImageSize: '2K' },
-  { id: 'chrome_screenshot_sm', label: 'Chrome Screenshot SM', platform: 'Chrome Store', width: 640, height: 400, category: 'store', geminiAspectRatio: '16:9', geminiImageSize: '1K' },
-  { id: 'chrome_promo_small', label: 'Chrome Promo Small', platform: 'Chrome Store', width: 440, height: 280, category: 'store', geminiAspectRatio: '16:9', geminiImageSize: '1K' },
+  { id: 'chrome_screenshot', label: 'Chrome Screenshot', platform: 'Chrome Store', width: 1280, height: 800, category: 'store', geminiAspectRatio: '3:2', geminiImageSize: '2K' },
+  { id: 'chrome_screenshot_sm', label: 'Chrome Screenshot SM', platform: 'Chrome Store', width: 640, height: 400, category: 'store', geminiAspectRatio: '3:2', geminiImageSize: '1K' },
+  { id: 'chrome_promo_small', label: 'Chrome Promo Small', platform: 'Chrome Store', width: 440, height: 280, category: 'store', geminiAspectRatio: '3:2', geminiImageSize: '1K' },
   { id: 'chrome_promo_marquee', label: 'Chrome Promo Marquee', platform: 'Chrome Store', width: 1400, height: 560, category: 'store', geminiAspectRatio: '21:9', geminiImageSize: '2K' },
 ];
 

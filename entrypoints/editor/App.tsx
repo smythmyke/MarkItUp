@@ -235,6 +235,8 @@ function Editor() {
         controller.signal,
         annotatedImage,
         includeText,
+        targetWidth,
+        targetHeight,
       );
 
       // Store raw Gemini outputs + config for free resize later

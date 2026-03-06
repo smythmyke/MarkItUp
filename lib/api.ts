@@ -117,6 +117,8 @@ export function generateVisual(
   signal?: AbortSignal,
   annotatedImageDataUrl?: string | null,
   includeText?: boolean,
+  targetWidth?: number,
+  targetHeight?: number,
 ): Promise<GenerateResponse> {
   return callAPI<GenerateResponse>(
     '/generate',
@@ -128,6 +130,7 @@ export function generateVisual(
       imageSize,
       ...(annotatedImageDataUrl ? { annotatedImageDataUrl } : {}),
       ...(includeText === false ? { includeText: false } : {}),
+      ...(targetWidth && targetHeight ? { targetWidth, targetHeight } : {}),
     },
     signal,
     GENERATE_TIMEOUT_MS,

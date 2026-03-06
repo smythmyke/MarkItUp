@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { PresentationTemplate, TemplateCategory } from '../types';
 import { TEMPLATE_CATEGORIES } from '../types';
 import { presentationTemplates, getTemplatesByCategory } from '../lib/presentationTemplates';
@@ -18,6 +18,13 @@ export default function TemplatePicker({
   const [activeCategory, setActiveCategory] = useState<TemplateCategory>(
     selectedTemplate?.category ?? 'product'
   );
+
+  // Auto-switch category tab when selected template changes (e.g. from library)
+  useEffect(() => {
+    if (selectedTemplate && selectedTemplate.category !== activeCategory) {
+      setActiveCategory(selectedTemplate.category);
+    }
+  }, [selectedTemplateId]);
   const [hoveredTemplate, setHoveredTemplate] = useState<PresentationTemplate | null>(null);
   const [popoverPos, setPopoverPos] = useState<{ top: number; left: number } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -50,6 +57,24 @@ export default function TemplatePicker({
       <h3 className="text-xs font-semibold uppercase tracking-wider text-ds-text-dim">
         Template
       </h3>
+
+      {/* Selected template summary */}
+      {selectedTemplate && (
+        <div className="flex items-center gap-2.5 rounded-lg border border-ds-accent/30 bg-ds-accent/5 px-2.5 py-2">
+          <img
+            src={selectedTemplate.previewUrl}
+            alt={selectedTemplate.name}
+            className="h-9 w-14 shrink-0 rounded object-cover"
+          />
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-xs font-medium text-ds-accent">{selectedTemplate.name}</div>
+            <div className="text-[10px] capitalize text-ds-text-dim">{selectedTemplate.category}</div>
+          </div>
+          <span className="shrink-0 rounded-full bg-ds-accent/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-ds-accent">
+            Selected
+          </span>
+        </div>
+      )}
 
       {/* Category tab bar */}
       <div className="flex rounded-md overflow-hidden border border-ds-border">

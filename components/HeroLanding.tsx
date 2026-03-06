@@ -81,6 +81,13 @@ export default function HeroLanding({ onImageImport, compact = false }: HeroLand
             5 free credits on first sign-up
           </div>
         )}
+
+        {/* Footer links */}
+        <div className="flex gap-4 text-xs text-ds-text-dim">
+          <a href={`${import.meta.env.BASE_URL}privacy.html`} className="transition-colors hover:text-ds-text-muted">Privacy</a>
+          <a href={`${import.meta.env.BASE_URL}terms.html`} className="transition-colors hover:text-ds-text-muted">Terms</a>
+          <a href={`${import.meta.env.BASE_URL}support.html`} className="transition-colors hover:text-ds-text-muted">Support</a>
+        </div>
       </div>
 
       {/* Right scrolling column (web only) */}

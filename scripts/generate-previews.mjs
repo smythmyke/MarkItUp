@@ -13,7 +13,15 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..");
 
 // --- Config ---
-const API_KEY = "AIzaSyDyXbcvAVj9B5dNvEe-ghNAAPHgmJnNh4U";
+// Read API key from functions/.env (never hardcode keys in committed files)
+const envPath = path.join(ROOT, "functions", ".env");
+const envContent = fs.existsSync(envPath) ? fs.readFileSync(envPath, "utf-8") : "";
+const keyMatch = envContent.match(/^GEMINI_API_KEY=(.+)$/m);
+const API_KEY = process.env.GEMINI_API_KEY || keyMatch?.[1] || "";
+if (!API_KEY) {
+  console.error("GEMINI_API_KEY not found. Set it in functions/.env or as an environment variable.");
+  process.exit(1);
+}
 const TEXT_MODEL = "gemini-2.5-flash";
 const IMAGE_MODEL = "gemini-3.1-flash-image-preview"; // for image generation
 const OUTPUT_DIR = path.join(ROOT, "public", "templates");

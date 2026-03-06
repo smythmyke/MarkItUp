@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { PresentationTemplate, TemplateCategory } from '../types';
 import { TEMPLATE_CATEGORIES } from '../types';
 import { presentationTemplates, getTemplatesByCategory } from '../lib/presentationTemplates';
@@ -28,6 +28,32 @@ export default function TemplatePicker({
 
   const filteredTemplates = getTemplatesByCategory(activeCategory);
 
+  // Scroll arrows for category tabs
+  const tabsRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  const updateScrollState = useCallback(() => {
+    const el = tabsRef.current;
+    if (!el) return;
+    setCanScrollLeft(el.scrollLeft > 2);
+    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 2);
+  }, []);
+
+  useEffect(() => {
+    updateScrollState();
+    const el = tabsRef.current;
+    if (!el) return;
+    el.addEventListener('scroll', updateScrollState, { passive: true });
+    const ro = new ResizeObserver(updateScrollState);
+    ro.observe(el);
+    return () => { el.removeEventListener('scroll', updateScrollState); ro.disconnect(); };
+  }, [updateScrollState]);
+
+  function scrollTabs(dir: 'left' | 'right') {
+    tabsRef.current?.scrollBy({ left: dir === 'left' ? -100 : 100, behavior: 'smooth' });
+  }
+
   return (
     <div className="flex flex-col gap-2">
       <h3 className="text-xs font-semibold uppercase tracking-wider text-ds-text-dim">
@@ -52,9 +78,24 @@ export default function TemplatePicker({
         </div>
       )}
 
-      {/* Category tab bar — horizontally scrollable for 6+ categories */}
-      <div className="relative">
-        <div className="flex gap-0.5 overflow-x-auto scrollbar-hidden rounded-md border border-ds-border bg-ds-elevated">
+      {/* Category tab bar with scroll arrows */}
+      <div className="flex items-center gap-1">
+        {canScrollLeft && (
+          <button
+            type="button"
+            onClick={() => scrollTabs('left')}
+            className="shrink-0 rounded p-0.5 text-ds-text-muted hover:text-ds-accent"
+            aria-label="Scroll categories left"
+          >
+            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M15 18l-6-6 6-6" />
+            </svg>
+          </button>
+        )}
+        <div
+          ref={tabsRef}
+          className="flex flex-1 gap-0.5 overflow-x-auto scrollbar-hidden rounded-md border border-ds-border bg-ds-elevated"
+        >
           {TEMPLATE_CATEGORIES.map((cat) => (
             <button
               key={cat.id}
@@ -70,6 +111,18 @@ export default function TemplatePicker({
             </button>
           ))}
         </div>
+        {canScrollRight && (
+          <button
+            type="button"
+            onClick={() => scrollTabs('right')}
+            className="shrink-0 rounded p-0.5 text-ds-text-muted hover:text-ds-accent"
+            aria-label="Scroll categories right"
+          >
+            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 18l6-6-6-6" />
+            </svg>
+          </button>
+        )}
       </div>
 
       {/* Template grid */}

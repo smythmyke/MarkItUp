@@ -42,6 +42,7 @@ function resizeIfNeeded(dataUrl: string, mimeType: string): Promise<string> {
 
 export default function ImageImport({ onImageImport }: ImageImportProps) {
   const [isDragging, setIsDragging] = useState(false);
+  const [isHovering, setIsHovering] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { showToast } = useToast();
 
@@ -114,12 +115,16 @@ export default function ImageImport({ onImageImport }: ImageImportProps) {
       onDrop={handleDrop}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
+      onMouseEnter={() => setIsHovering(true)}
+      onMouseLeave={() => setIsHovering(false)}
       className={`flex max-w-md flex-col items-center gap-4 rounded-xl border-2 border-dashed p-12 transition-all duration-300 ${
         isDragging
           ? 'border-ds-accent bg-ds-accent-subtle shadow-[0_0_20px_4px_rgba(88,166,255,0.3)]'
-          : 'border-ds-border-light hover:border-[#ff6a00] hover:shadow-[0_0_20px_4px_rgba(255,106,0,0.35)]'
+          : isHovering
+            ? 'border-[#ff6a00] shadow-[0_0_20px_4px_rgba(255,106,0,0.35)]'
+            : 'border-ds-border-light'
       }`}
-      style={!isDragging ? { animation: 'dropFlash 20s ease-in-out infinite' } : undefined}
+      style={!isDragging && !isHovering ? { animation: 'dropFlash 20s ease-in-out infinite' } : undefined}
     >
       <svg
         className="h-12 w-12 text-ds-text-dim"

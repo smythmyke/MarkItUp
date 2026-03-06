@@ -44,6 +44,16 @@
   animation: fadeIn 0.5s ease-in-out;
 }
 
+/* Template library — infinite horizontal marquee */
+@keyframes marqueeLeft {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+@keyframes marqueeRight {
+  0% { transform: translateX(-50%); }
+  100% { transform: translateX(0); }
+}
+
 @theme {
   /* Deep Space palette */
   --color-ds-bg: #010409;

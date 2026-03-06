@@ -127,7 +127,7 @@ export interface PresentationTemplate {
 
 // --- Output Size Presets ---
 
-export type OutputSizeCategory = 'social' | 'marketing' | 'product' | 'banners';
+export type OutputSizeCategory = 'social' | 'marketing' | 'product' | 'banners' | 'store';
 
 export interface OutputSizePreset {
   id: string;

@@ -14,6 +14,7 @@ export const OUTPUT_SIZE_CATEGORIES: { id: OutputSizeCategory; label: string }[]
   { id: 'marketing', label: 'Marketing' },
   { id: 'product', label: 'Product' },
   { id: 'banners', label: 'Banners' },
+  { id: 'store', label: 'Store Assets' },
 ];
 
 // --- Presets ---
@@ -35,6 +36,11 @@ export const OUTPUT_SIZE_PRESETS: OutputSizePreset[] = [
   // Banners
   { id: 'twitter_banner', label: 'Twitter/X Banner', platform: 'Twitter', width: 1500, height: 500, category: 'banners', geminiAspectRatio: '21:9', geminiImageSize: '2K' },
   { id: 'yt_banner', label: 'YouTube Banner', platform: 'YouTube', width: 2560, height: 1440, category: 'banners', geminiAspectRatio: '16:9', geminiImageSize: '4K' },
+  // Store Assets
+  { id: 'chrome_screenshot', label: 'Chrome Screenshot', platform: 'Chrome Store', width: 1280, height: 800, category: 'store', geminiAspectRatio: '16:9', geminiImageSize: '2K' },
+  { id: 'chrome_screenshot_sm', label: 'Chrome Screenshot SM', platform: 'Chrome Store', width: 640, height: 400, category: 'store', geminiAspectRatio: '16:9', geminiImageSize: '1K' },
+  { id: 'chrome_promo_small', label: 'Chrome Promo Small', platform: 'Chrome Store', width: 440, height: 280, category: 'store', geminiAspectRatio: '16:9', geminiImageSize: '1K' },
+  { id: 'chrome_promo_marquee', label: 'Chrome Promo Marquee', platform: 'Chrome Store', width: 1400, height: 560, category: 'store', geminiAspectRatio: '21:9', geminiImageSize: '2K' },
 ];
 
 // --- Lookup ---

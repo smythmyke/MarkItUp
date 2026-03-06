@@ -2,7 +2,7 @@
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
 import { handleAnnotateRequest } from "./annotate";
-import { handleGenerateRequest, handleRegenRequest } from "./generate";
+import { handleGenerateRequest, handleRegenRequest, handleExtendRequest } from "./generate";
 import { handleCreditRequest, getBalance } from "./credits";
 import { handleWebhookEvent } from "./stripe";
 
@@ -144,6 +144,22 @@ export const api = functions
       }
 
       const result = await handleRegenRequest(req.body, decodedToken);
+      res.status(200).json({ data: result });
+      return;
+    }
+
+    // Extend endpoint — AI outpaint to fill a different aspect ratio (1 credit)
+    if (path === "/extend") {
+      const db = admin.firestore();
+      const balance = await getBalance(db, decodedToken.uid);
+      if (balance.balance <= 0) {
+        res.status(402).json({
+          error: "No credits remaining. Purchase credits to continue.",
+        });
+        return;
+      }
+
+      const result = await handleExtendRequest(req.body, decodedToken);
       res.status(200).json({ data: result });
       return;
     }

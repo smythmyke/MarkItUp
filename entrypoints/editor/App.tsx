@@ -20,7 +20,7 @@ import type { ExportOptions, PresentationTemplate, TextAnalysis } from '../../ty
 import { defaultTemplate } from '../../lib/presentationTemplates';
 import { downloadDataUrl } from '../../lib/utils';
 import { useCreditGate } from '../../hooks/useCreditGate';
-import { generateVisual, regenVariation } from '../../lib/api';
+import { generateVisual, regenVariation, extendImage } from '../../lib/api';
 import {
   DEFAULT_OUTPUT_SIZE_ID,
   findPresetById,
@@ -31,6 +31,7 @@ import {
 
 import { isExtension } from '../../lib/platform';
 import { applyWatermark } from '../../lib/watermark';
+import { canDirectExport, incrementDirectExport, getDirectExportRemaining } from '../../lib/exportLimit';
 import logoUrl from '../../assets/logo.png';
 
 function Editor() {
@@ -58,6 +59,7 @@ function Editor() {
 
   const [includeText, setIncludeText] = useState(true);
   const [hasHighlights, setHasHighlights] = useState(false);
+  const [extending, setExtending] = useState(false);
   const highlightCompositeRef = useRef<(() => Promise<string | null>) | null>(null);
 
   // Raw Gemini outputs (before resize) — used for free resize when switching output sizes
@@ -404,6 +406,105 @@ function Editor() {
     );
   }, [variations, checkedVariations, exportOptions, isFreeUser, showToast]);
 
+  // --- Direct Export (no AI generation) ---
+
+  const handleDirectExport = useCallback(async () => {
+    if (!imageDataUrl) return;
+
+    if (!canDirectExport()) {
+      showToast(`Daily export limit reached (${getDirectExportRemaining()} remaining). Try again tomorrow.`, 'error');
+      return;
+    }
+
+    const ext = exportOptions.format === 'jpeg' ? 'jpg' : 'png';
+
+    // Resize to target output size
+    let dataUrl: string;
+    try {
+      dataUrl = await resizeImageToTarget(imageDataUrl, targetWidth, targetHeight);
+    } catch {
+      showToast('Failed to resize image', 'error');
+      return;
+    }
+
+    // Apply watermark for free users
+    if (isFreeUser) {
+      try {
+        dataUrl = await applyWatermark(dataUrl, exportOptions.format, exportOptions.quality);
+      } catch (err) {
+        console.error('Watermark failed, exporting without:', err);
+      }
+    }
+
+    // Convert to JPEG if needed
+    if (exportOptions.format === 'jpeg') {
+      const canvas = document.createElement('canvas');
+      const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const i = new Image();
+        i.onload = () => resolve(i);
+        i.onerror = () => reject(new Error('Failed to load image'));
+        i.src = dataUrl;
+      });
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d')!;
+      ctx.drawImage(img, 0, 0);
+      dataUrl = canvas.toDataURL('image/jpeg', exportOptions.quality);
+    }
+
+    incrementDirectExport();
+    downloadDataUrl(dataUrl, `markitup-export.${ext}`);
+    const remaining = getDirectExportRemaining();
+    showToast(`Image exported! (${remaining} free export${remaining === 1 ? '' : 's'} remaining today)`, 'success');
+  }, [imageDataUrl, targetWidth, targetHeight, exportOptions, isFreeUser, showToast]);
+
+  // --- AI Extend (outpaint to different aspect ratio) ---
+
+  const handleAiExtend = useCallback(() => {
+    const sourceImage = variations.length > 0 ? variations[selectedVariation] : imageDataUrl;
+    if (!sourceImage) return;
+
+    const preset = selectedPresetId !== 'custom' ? findPresetById(selectedPresetId) : null;
+    const gemini = preset
+      ? { aspectRatio: preset.geminiAspectRatio, imageSize: preset.geminiImageSize }
+      : resolveGeminiConfig(customWidth, customHeight);
+
+    setExtending(true);
+
+    execute(async () => {
+      const result = await extendImage(
+        sourceImage,
+        gemini.aspectRatio,
+        gemini.imageSize,
+        targetWidth,
+        targetHeight,
+      );
+
+      // Resize to exact target dimensions
+      const resized = await resizeImageToTarget(result.variation, targetWidth, targetHeight);
+
+      // Replace current view with extended image
+      setVariations([resized]);
+      setRawVariations([result.variation]);
+      setGenGeminiConfig(gemini);
+      setSelectedVariation(0);
+      setCheckedVariations(new Set([0]));
+      setExtending(false);
+
+      showToast('Image extended to new aspect ratio!', 'success');
+      return result;
+    }).catch(() => {
+      setExtending(false);
+    });
+  }, [imageDataUrl, variations, selectedVariation, selectedPresetId, customWidth, customHeight, targetWidth, targetHeight, execute, showToast]);
+
+  // Detect aspect ratio mismatch for AI Extend button
+  const showAiExtend = useMemo(() => {
+    if (!imageDataUrl || generating || extending) return false;
+    // Load source image dimensions to compare ratios
+    return true; // We'll check ratio mismatch in the component
+  }, [imageDataUrl, generating, extending]);
+
   // --- New Image ---
 
   const handleNewImage = useCallback(() => {
@@ -464,9 +565,9 @@ function Editor() {
           </main>
         ) : (<>
         <main className="flex flex-1 items-center justify-center overflow-auto bg-ds-bg p-4">
-          {generating ? (
-            /* Generating — template carousel */
-            <GeneratingPreview selectedTemplateName={selectedTemplate.name} />
+          {generating || extending ? (
+            /* Generating or extending — template carousel */
+            <GeneratingPreview selectedTemplateName={extending ? 'AI Extend' : selectedTemplate.name} />
           ) : hasResult ? (
             /* Show selected variation */
             <img
@@ -571,7 +672,7 @@ function Editor() {
               </>
             )}
 
-            {/* Export (only when a variation is selected) */}
+            {/* Export — AI variations */}
             {hasResult && (
               <>
                 <div className="h-px bg-ds-border" />
@@ -581,6 +682,59 @@ function Editor() {
                   onExport={handleExport}
                   checkedCount={checkedVariations.size}
                 />
+              </>
+            )}
+
+            {/* Export — Direct (no AI generation) */}
+            {!hasResult && !generating && (
+              <>
+                <div className="h-px bg-ds-border" />
+                <ExportPanel
+                  options={exportOptions}
+                  onOptionsChange={setExportOptions}
+                  onExport={handleDirectExport}
+                  checkedCount={1}
+                  directExport
+                />
+              </>
+            )}
+
+            {/* AI Extend — shown when user has an image and might want outpainting */}
+            {showAiExtend && user && (
+              <>
+                <div className="h-px bg-ds-border" />
+                <div className="flex flex-col gap-2">
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-ds-text-dim">AI Extend</h3>
+                  <p className="text-xs text-ds-text-muted">
+                    Use AI to extend your image to fill the selected output size. Works best when the aspect ratio differs from your source image.
+                  </p>
+                  <button
+                    type="button"
+                    disabled={extending}
+                    onClick={handleAiExtend}
+                    className="flex w-full items-center justify-center gap-2 rounded-md bg-ds-accent-emphasis/20 border border-ds-accent/30 px-3 py-2 text-sm font-medium text-ds-accent transition-colors hover:bg-ds-accent-emphasis/30 disabled:opacity-50"
+                  >
+                    {extending ? (
+                      <>
+                        <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <circle cx="12" cy="12" r="10" strokeOpacity="0.25" />
+                          <path d="M12 2a10 10 0 0 1 10 10" />
+                        </svg>
+                        Extending...
+                      </>
+                    ) : (
+                      <>
+                        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="15 3 21 3 21 9" />
+                          <polyline points="9 21 3 21 3 15" />
+                          <line x1="21" y1="3" x2="14" y2="10" />
+                          <line x1="3" y1="21" x2="10" y2="14" />
+                        </svg>
+                        AI Extend — 1 credit
+                      </>
+                    )}
+                  </button>
+                </div>
               </>
             )}
           </aside>

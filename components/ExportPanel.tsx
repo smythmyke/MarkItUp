@@ -6,9 +6,10 @@ interface ExportPanelProps {
   onOptionsChange: (options: ExportOptions) => void;
   onExport: () => void;
   checkedCount: number;
+  directExport?: boolean;
 }
 
-export default function ExportPanel({ options, onOptionsChange, onExport, checkedCount }: ExportPanelProps) {
+export default function ExportPanel({ options, onOptionsChange, onExport, checkedCount, directExport }: ExportPanelProps) {
   const [exporting, setExporting] = useState(false);
 
   function handleExport() {
@@ -75,6 +76,8 @@ export default function ExportPanel({ options, onOptionsChange, onExport, checke
       >
         {exporting
           ? 'Exporting...'
+          : directExport
+          ? 'Export Image'
           : checkedCount === 0
           ? 'Select images to export'
           : checkedCount === 1

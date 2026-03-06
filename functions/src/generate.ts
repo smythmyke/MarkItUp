@@ -695,6 +695,108 @@ async function autoOcrAndRetry(
   return variations;
 }
 
+// ---- AI Extend (outpaint) ----
+
+interface ExtendBody {
+  imageDataUrl: string;
+  aspectRatio: string;
+  imageSize: string;
+  targetWidth: number;
+  targetHeight: number;
+}
+
+interface ExtendResult {
+  variation: string; // single base64 data URL
+}
+
+/**
+ * AI Extend: outpaint an image to fill a different aspect ratio.
+ * Uses Gemini image generation to naturally extend the canvas.
+ */
+export async function handleExtendRequest(
+  body: ExtendBody,
+  user: admin.auth.DecodedIdToken
+): Promise<ExtendResult> {
+  const { imageDataUrl, aspectRatio, imageSize, targetWidth, targetHeight } = body;
+
+  if (!imageDataUrl || !aspectRatio || !targetWidth || !targetHeight) {
+    throw new functions.https.HttpsError(
+      "invalid-argument",
+      "imageDataUrl, aspectRatio, targetWidth, and targetHeight are required"
+    );
+  }
+
+  const VALID_ASPECT_RATIOS = ["1:1", "3:2", "2:3", "3:4", "4:3", "4:5", "5:4", "9:16", "16:9", "21:9"];
+  const VALID_IMAGE_SIZES = ["1K", "2K", "4K"];
+
+  if (!VALID_ASPECT_RATIOS.includes(aspectRatio)) {
+    throw new functions.https.HttpsError("invalid-argument", `Invalid aspectRatio: ${aspectRatio}`);
+  }
+  if (imageSize && !VALID_IMAGE_SIZES.includes(imageSize)) {
+    throw new functions.https.HttpsError("invalid-argument", `Invalid imageSize: ${imageSize}`);
+  }
+
+  const db = admin.firestore();
+  await initCredits(db, user.uid);
+  await useCredit(db, user.uid);
+
+  const geminiApiKey = process.env.GEMINI_API_KEY;
+  if (!geminiApiKey) {
+    throw new functions.https.HttpsError("failed-precondition", "Gemini API is not configured");
+  }
+  const genAI = new GoogleGenerativeAI(geminiApiKey);
+
+  const { mediaType, base64Data } = parseDataUrl(imageDataUrl);
+
+  const model = genAI.getGenerativeModel({
+    model: "gemini-3.1-flash-image-preview",
+    generationConfig: {
+      // @ts-expect-error — responseModalities/imageConfig/thinkingConfig not yet in SDK types
+      responseModalities: ["image", "text"],
+      thinkingConfig: { thinkingLevel: "medium" },
+      imageConfig: {
+        aspectRatio,
+        ...(imageSize && { imageSize }),
+      },
+    },
+  });
+
+  const prompt = `TASK: Extend this image to fill a ${aspectRatio} canvas (${targetWidth}x${targetHeight} pixels).
+
+CRITICAL RULES:
+- Preserve the ENTIRE original image content exactly as-is — do not crop, alter, distort, or reinterpret any part of it.
+- Fill the extended areas with a natural, seamless continuation of the scene (background, colors, textures, patterns).
+- The transition between original content and extended areas must be invisible — no seams, edges, or color shifts.
+- Do NOT add any new text, logos, watermarks, or objects that weren't in the original.
+- Do NOT apply filters, color grading, or style changes to the original content.
+- The result should look like the image was originally captured at this wider/taller framing.
+
+Generate the extended image now.`;
+
+  const result = await model.generateContent([
+    { inlineData: { mimeType: mediaType, data: base64Data } },
+    { text: prompt },
+  ]);
+
+  const candidates = result.response.candidates;
+  if (!candidates || candidates.length === 0) {
+    throw new functions.https.HttpsError("internal", "AI Extend failed — no response. Please try again.");
+  }
+
+  const parts = candidates[0].content?.parts;
+  if (parts) {
+    for (const part of parts) {
+      if (part.inlineData && part.inlineData.mimeType?.startsWith("image/")) {
+        const imgDataUrl = `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
+        console.log(`AI Extend: success for user ${user.uid}, ${aspectRatio} ${targetWidth}x${targetHeight}`);
+        return { variation: imgDataUrl };
+      }
+    }
+  }
+
+  throw new functions.https.HttpsError("internal", "AI Extend produced no image. Please try again.");
+}
+
 // ---- Regen Feature ----
 
 interface RegenBody {

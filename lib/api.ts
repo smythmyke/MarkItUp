@@ -167,6 +167,24 @@ export function regenVariation(
   );
 }
 
+// --- AI Extend (outpaint) ---
+
+export function extendImage(
+  imageDataUrl: string,
+  aspectRatio: string,
+  imageSize: string,
+  targetWidth: number,
+  targetHeight: number,
+  signal?: AbortSignal,
+): Promise<{ variation: string }> {
+  return callAPI<{ variation: string }>(
+    '/extend',
+    { imageDataUrl, aspectRatio, imageSize, targetWidth, targetHeight },
+    signal,
+    REGEN_TIMEOUT_MS,
+  );
+}
+
 // --- Credits ---
 
 export async function getBalance(): Promise<CreditBalance> {

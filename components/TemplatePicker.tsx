@@ -125,8 +125,8 @@ export default function TemplatePicker({
         )}
       </div>
 
-      {/* Template grid */}
-      <div className="grid grid-cols-2 gap-2">
+      {/* Template grid — scrollable to keep description/generate visible */}
+      <div className="grid max-h-[220px] grid-cols-2 gap-2 overflow-y-auto scrollbar-hidden">
         {filteredTemplates.map((template) => {
           const isActive = selectedTemplateId === template.id;
           return (

@@ -78,7 +78,7 @@ export default function DescriptionInput({
             ? 'e.g. "Organic dog treats in a resealable kraft bag. Show someone enjoying time with their dog."\n\nAI-generated people are fictional and do not represent real individuals.'
             : 'e.g. "This is my SaaS dashboard. Highlight the bulk upload button and emphasize the real-time metrics panel."\n\nLeave empty for a text-free scenic visual.'}
           maxLength={MAX_LENGTH}
-          rows={5}
+          rows={3}
           className="w-full resize-none rounded-lg border border-ds-border-light bg-ds-elevated px-3 py-3 text-sm leading-relaxed text-ds-text placeholder-ds-text-dim focus:border-ds-accent focus:outline-none"
         />
         {charPercent > 0.8 && (

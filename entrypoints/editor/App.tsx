@@ -60,6 +60,7 @@ function Editor() {
   const [includeText, setIncludeText] = useState(true);
   const [hasHighlights, setHasHighlights] = useState(false);
   const [extending, setExtending] = useState(false);
+  const [activeTab, setActiveTab] = useState<'edit' | 'generate' | 'export'>('edit');
   const highlightCompositeRef = useRef<(() => Promise<string | null>) | null>(null);
 
   // Raw Gemini outputs (before resize) — used for free resize when switching output sizes
@@ -255,6 +256,7 @@ function Editor() {
       setCheckedVariations(new Set(resized.map((_, i) => i)));
       setTextAnalysis(result.text);
       setFreeRegenUsed(false);
+      setActiveTab('export');
 
       if (result.variations.length < 2) {
         showToast(
@@ -520,6 +522,7 @@ function Editor() {
     setRegenLoadingIndex(-1);
     setFreeRegenUsed(false);
     setHasHighlights(false);
+    setActiveTab('edit');
   }, []);
 
   const handleEditDone = useCallback((editedDataUrl: string) => {
@@ -593,151 +596,226 @@ function Editor() {
         </main>
 
         {/* Sidebar */}
-        <aside className="flex w-80 shrink-0 flex-col gap-5 overflow-y-auto scrollbar-hidden border-l border-ds-border bg-ds-surface p-4">
-            {/* Edit Image */}
-            {!generating && (
-              <button
-                type="button"
-                onClick={() => setShowEditor(true)}
-                className="flex items-center justify-center gap-2 rounded-md border border-ds-border-light px-3 py-2 text-sm text-ds-text-muted transition-colors hover:border-ds-accent hover:text-ds-text"
-              >
-                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
-                  <path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
-                </svg>
-                Edit Image
-              </button>
-            )}
+        <aside className="flex w-80 shrink-0 flex-col border-l border-ds-border bg-ds-surface">
+          {/* Tab Bar */}
+          <div className="flex shrink-0 border-b border-ds-border">
+            <button
+              type="button"
+              onClick={() => setActiveTab('edit')}
+              className={`flex flex-1 items-center justify-center gap-1.5 border-b-2 px-2 py-2.5 text-xs font-semibold uppercase tracking-wider transition-colors ${
+                activeTab === 'edit'
+                  ? 'border-ds-accent text-ds-accent'
+                  : 'border-transparent text-ds-text-muted hover:text-ds-text hover:bg-ds-elevated'
+              }`}
+            >
+              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+                <path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+              </svg>
+              Edit
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('generate')}
+              className={`flex flex-1 items-center justify-center gap-1.5 border-b-2 px-2 py-2.5 text-xs font-semibold uppercase tracking-wider transition-colors ${
+                activeTab === 'generate'
+                  ? 'border-ds-accent text-ds-accent'
+                  : 'border-transparent text-ds-text-muted hover:text-ds-text hover:bg-ds-elevated'
+              }`}
+            >
+              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+              </svg>
+              Generate
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('export')}
+              className={`flex flex-1 items-center justify-center gap-1.5 border-b-2 px-2 py-2.5 text-xs font-semibold uppercase tracking-wider transition-colors ${
+                activeTab === 'export'
+                  ? 'border-ds-accent text-ds-accent'
+                  : 'border-transparent text-ds-text-muted hover:text-ds-text hover:bg-ds-elevated'
+              }`}
+            >
+              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+              Export
+            </button>
+          </div>
 
-            {/* Highlight Areas */}
-            {!generating && !hasResult && (
-              <HighlightOverlay
-                imageDataUrl={imageDataUrl}
-                onHighlightsChange={setHasHighlights}
-                compositeRef={highlightCompositeRef}
-              />
-            )}
+          {/* Tab Content */}
+          <div className="flex flex-1 flex-col gap-5 overflow-y-auto scrollbar-hidden p-4">
 
-            {/* Description */}
-            <DescriptionInput
-              description={description}
-              onDescriptionChange={setDescription}
-              loading={generating}
-              hasResult={hasResult}
-              onGenerate={handleGenerate}
-              onRegenerate={handleRegenerate}
-              onCancel={handleCancelGenerate}
-              onSignInToGenerate={handleSignInToGenerate}
-              isLifestyle={isLifestyle}
-              includeText={includeText}
-              onIncludeTextChange={setIncludeText}
-            />
-
-            <div className="h-px bg-ds-border" />
-
-            {/* Template Picker */}
-            <TemplatePicker
-              selectedTemplateId={selectedTemplate.id}
-              onTemplateChange={setSelectedTemplate}
-              onBrowseAll={() => setShowLibrary(true)}
-            />
-
-            <div className="h-px bg-ds-border" />
-
-            {/* Output Size */}
-            <OutputSizePicker
-              selectedPresetId={selectedPresetId}
-              customWidth={customWidth}
-              customHeight={customHeight}
-              onPresetChange={setSelectedPresetId}
-              onCustomSizeChange={(w, h) => { setCustomWidth(w); setCustomHeight(h); }}
-            />
-
-            {/* Variation selector (shown below main when results exist) */}
-            {(hasResult || generating) && (
+            {/* === TAB: Edit === */}
+            {activeTab === 'edit' && (
               <>
-                <div className="h-px bg-ds-border" />
-                <VariationGrid
-                  variations={variations}
-                  selectedIndex={selectedVariation}
-                  onSelect={setSelectedVariation}
-                  checkedIndices={checkedVariations}
-                  onToggleCheck={handleToggleCheck}
-                  loading={generating}
-                  outputSizeLabel={`${targetWidth} \u00d7 ${targetHeight}`}
-                  onRegen={handleRegen}
-                  regenLoadingIndex={regenLoadingIndex}
-                  freeRegenAvailable={!freeRegenUsed}
-                />
-              </>
-            )}
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-ds-text-dim">Image Tools</h3>
 
-            {/* Export — AI variations */}
-            {hasResult && (
-              <>
-                <div className="h-px bg-ds-border" />
-                <ExportPanel
-                  options={exportOptions}
-                  onOptionsChange={setExportOptions}
-                  onExport={handleExport}
-                  checkedCount={checkedVariations.size}
-                />
-              </>
-            )}
-
-            {/* Export — Direct (no AI generation) */}
-            {!hasResult && !generating && (
-              <>
-                <div className="h-px bg-ds-border" />
-                <ExportPanel
-                  options={exportOptions}
-                  onOptionsChange={setExportOptions}
-                  onExport={handleDirectExport}
-                  checkedCount={1}
-                  directExport
-                />
-              </>
-            )}
-
-            {/* AI Extend — shown when user has an image and might want outpainting */}
-            {showAiExtend && user && (
-              <>
-                <div className="h-px bg-ds-border" />
-                <div className="flex flex-col gap-2">
-                  <h3 className="text-xs font-semibold uppercase tracking-wider text-ds-text-dim">AI Extend</h3>
-                  <p className="text-xs text-ds-text-muted">
-                    Use AI to extend your image to fill the selected output size. Works best when the aspect ratio differs from your source image.
-                  </p>
+                {/* Edit Image */}
+                {!generating && (
                   <button
                     type="button"
-                    disabled={extending}
-                    onClick={handleAiExtend}
-                    className="flex w-full items-center justify-center gap-2 rounded-md bg-ds-accent-emphasis/20 border border-ds-accent/30 px-3 py-2 text-sm font-medium text-ds-accent transition-colors hover:bg-ds-accent-emphasis/30 disabled:opacity-50"
+                    onClick={() => setShowEditor(true)}
+                    className="flex items-center justify-center gap-2 rounded-md border border-ds-border-light px-3 py-2 text-sm text-ds-text-muted transition-colors hover:border-ds-accent hover:text-ds-text"
                   >
-                    {extending ? (
-                      <>
-                        <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <circle cx="12" cy="12" r="10" strokeOpacity="0.25" />
-                          <path d="M12 2a10 10 0 0 1 10 10" />
-                        </svg>
-                        Extending...
-                      </>
-                    ) : (
-                      <>
-                        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <polyline points="15 3 21 3 21 9" />
-                          <polyline points="9 21 3 21 3 15" />
-                          <line x1="21" y1="3" x2="14" y2="10" />
-                          <line x1="3" y1="21" x2="10" y2="14" />
-                        </svg>
-                        AI Extend — 1 credit
-                      </>
-                    )}
+                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+                      <path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+                    </svg>
+                    Open Image Editor
                   </button>
-                </div>
+                )}
+                <p className="text-xs text-ds-text-dim leading-relaxed">
+                  Crop, resize, rotate, adjust brightness/contrast, and remove backgrounds — all free.
+                </p>
+
+                {/* Highlight Areas */}
+                {!generating && !hasResult && (
+                  <>
+                    <div className="h-px bg-ds-border" />
+                    <HighlightOverlay
+                      imageDataUrl={imageDataUrl}
+                      onHighlightsChange={setHasHighlights}
+                      compositeRef={highlightCompositeRef}
+                    />
+                  </>
+                )}
               </>
             )}
-          </aside>
+
+            {/* === TAB: Generate === */}
+            {activeTab === 'generate' && (
+              <>
+                {/* Template Picker */}
+                <TemplatePicker
+                  selectedTemplateId={selectedTemplate.id}
+                  onTemplateChange={setSelectedTemplate}
+                  onBrowseAll={() => setShowLibrary(true)}
+                />
+
+                <div className="h-px bg-ds-border" />
+
+                {/* Description */}
+                <DescriptionInput
+                  description={description}
+                  onDescriptionChange={setDescription}
+                  loading={generating}
+                  hasResult={hasResult}
+                  onGenerate={handleGenerate}
+                  onRegenerate={handleRegenerate}
+                  onCancel={handleCancelGenerate}
+                  onSignInToGenerate={handleSignInToGenerate}
+                  isLifestyle={isLifestyle}
+                  includeText={includeText}
+                  onIncludeTextChange={setIncludeText}
+                />
+              </>
+            )}
+
+            {/* === TAB: Export === */}
+            {activeTab === 'export' && (
+              <>
+                {/* Output Size */}
+                <OutputSizePicker
+                  selectedPresetId={selectedPresetId}
+                  customWidth={customWidth}
+                  customHeight={customHeight}
+                  onPresetChange={setSelectedPresetId}
+                  onCustomSizeChange={(w, h) => { setCustomWidth(w); setCustomHeight(h); }}
+                />
+
+                {/* Variation selector */}
+                {(hasResult || generating) && (
+                  <>
+                    <div className="h-px bg-ds-border" />
+                    <VariationGrid
+                      variations={variations}
+                      selectedIndex={selectedVariation}
+                      onSelect={setSelectedVariation}
+                      checkedIndices={checkedVariations}
+                      onToggleCheck={handleToggleCheck}
+                      loading={generating}
+                      outputSizeLabel={`${targetWidth} \u00d7 ${targetHeight}`}
+                      onRegen={handleRegen}
+                      regenLoadingIndex={regenLoadingIndex}
+                      freeRegenAvailable={!freeRegenUsed}
+                    />
+                  </>
+                )}
+
+                {/* Export — AI variations */}
+                {hasResult && (
+                  <>
+                    <div className="h-px bg-ds-border" />
+                    <ExportPanel
+                      options={exportOptions}
+                      onOptionsChange={setExportOptions}
+                      onExport={handleExport}
+                      checkedCount={checkedVariations.size}
+                    />
+                  </>
+                )}
+
+                {/* Export — Direct (no AI generation) */}
+                {!hasResult && !generating && (
+                  <>
+                    <div className="h-px bg-ds-border" />
+                    <ExportPanel
+                      options={exportOptions}
+                      onOptionsChange={setExportOptions}
+                      onExport={handleDirectExport}
+                      checkedCount={1}
+                      directExport
+                    />
+                  </>
+                )}
+
+                {/* AI Extend */}
+                {showAiExtend && user && (
+                  <>
+                    <div className="h-px bg-ds-border" />
+                    <div className="flex flex-col gap-2">
+                      <h3 className="text-xs font-semibold uppercase tracking-wider text-ds-text-dim">AI Extend</h3>
+                      <p className="text-xs text-ds-text-muted">
+                        Use AI to extend your image to fill the selected output size. Works best when the aspect ratio differs from your source image.
+                      </p>
+                      <button
+                        type="button"
+                        disabled={extending}
+                        onClick={handleAiExtend}
+                        className="flex w-full items-center justify-center gap-2 rounded-md bg-ds-accent-emphasis/20 border border-ds-accent/30 px-3 py-2 text-sm font-medium text-ds-accent transition-colors hover:bg-ds-accent-emphasis/30 disabled:opacity-50"
+                      >
+                        {extending ? (
+                          <>
+                            <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <circle cx="12" cy="12" r="10" strokeOpacity="0.25" />
+                              <path d="M12 2a10 10 0 0 1 10 10" />
+                            </svg>
+                            Extending...
+                          </>
+                        ) : (
+                          <>
+                            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="15 3 21 3 21 9" />
+                              <polyline points="9 21 3 21 3 15" />
+                              <line x1="21" y1="3" x2="14" y2="10" />
+                              <line x1="3" y1="21" x2="10" y2="14" />
+                            </svg>
+                            AI Extend — 1 credit
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </>
+            )}
+
+          </div>
+        </aside>
         </>)}
       </div>
 

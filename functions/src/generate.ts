@@ -753,7 +753,7 @@ export async function handleExtendRequest(
     generationConfig: {
       // @ts-expect-error — responseModalities/imageConfig/thinkingConfig not yet in SDK types
       responseModalities: ["image", "text"],
-      thinkingConfig: { thinkingLevel: "medium" },
+      thinkingConfig: { thinkingLevel: "high" },
       imageConfig: {
         aspectRatio,
         ...(imageSize && { imageSize }),

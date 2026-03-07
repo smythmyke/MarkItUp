@@ -18,7 +18,9 @@ import HighlightOverlay from '../../components/HighlightOverlay';
 import type { HighlightTool, Stroke } from '../../components/HighlightOverlay';
 import HighlightCanvas from '../../components/HighlightCanvas';
 import TemplateLibrary from '../../components/TemplateLibrary';
-import type { ExportOptions, PresentationTemplate, TextAnalysis } from '../../types';
+import BrandKitEditor from '../../components/BrandKitEditor';
+import BrandKitSelector from '../../components/BrandKitSelector';
+import type { BrandKit, ExportOptions, PresentationTemplate, TextAnalysis } from '../../types';
 import { defaultTemplate } from '../../lib/presentationTemplates';
 import { downloadDataUrl } from '../../lib/utils';
 import { useCreditGate } from '../../hooks/useCreditGate';
@@ -33,6 +35,8 @@ import {
 
 import { isExtension } from '../../lib/platform';
 import { applyWatermark } from '../../lib/watermark';
+import { compositeBrandLogo } from '../../lib/brandComposite';
+import { loadBrandKits } from '../../lib/brandKit';
 import { canDirectExport, incrementDirectExport, getDirectExportRemaining } from '../../lib/exportLimit';
 import logoUrl from '../../assets/logo.png';
 
@@ -63,6 +67,9 @@ function Editor() {
   const [hasHighlights, setHasHighlights] = useState(false);
   const [extending, setExtending] = useState(false);
   const [activeTab, setActiveTab] = useState<'edit' | 'generate' | 'export'>('edit');
+  const [showBrandEditor, setShowBrandEditor] = useState(false);
+  const [brandKits, setBrandKits] = useState<BrandKit[]>([]);
+  const [selectedBrandId, setSelectedBrandId] = useState<string | null>(null);
   const highlightCompositeRef = useRef<(() => Promise<string | null>) | null>(null);
 
   // Lifted highlight state (shared between sidebar controls + main canvas)
@@ -167,13 +174,49 @@ function Editor() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedPresetId, customWidth, customHeight, targetWidth, targetHeight]);
 
-  // Listen for "Buy Credits" from AuthButton dropdown
+  // Load brand kits when user signs in
+  useEffect(() => {
+    if (!user) {
+      setBrandKits([]);
+      setSelectedBrandId(null);
+      return;
+    }
+    loadBrandKits(user.uid).then(setBrandKits).catch(console.error);
+  }, [user]);
+
+  // Restore last selected brand kit
+  useEffect(() => {
+    const saved = localStorage.getItem('markitup:selectedBrand');
+    if (saved && brandKits.find((k) => k.id === saved)) {
+      setSelectedBrandId(saved);
+    }
+  }, [brandKits]);
+
+  // Persist selected brand kit
+  useEffect(() => {
+    if (selectedBrandId) {
+      localStorage.setItem('markitup:selectedBrand', selectedBrandId);
+    } else {
+      localStorage.removeItem('markitup:selectedBrand');
+    }
+  }, [selectedBrandId]);
+
+  const selectedBrandKit = brandKits.find((k) => k.id === selectedBrandId) || null;
+
+  // Listen for "Buy Credits" and "Brand Kit" from AuthButton dropdown
   useEffect(() => {
     function handleOpenPurchase() {
       setShowPurchase(true);
     }
+    function handleOpenBrandKit() {
+      setShowBrandEditor(true);
+    }
     document.addEventListener('markitup:open-purchase', handleOpenPurchase);
-    return () => document.removeEventListener('markitup:open-purchase', handleOpenPurchase);
+    document.addEventListener('markitup:open-brand-kit', handleOpenBrandKit);
+    return () => {
+      document.removeEventListener('markitup:open-purchase', handleOpenPurchase);
+      document.removeEventListener('markitup:open-brand-kit', handleOpenBrandKit);
+    };
   }, []);
 
   // --- Keyboard shortcuts ---
@@ -237,6 +280,9 @@ function Editor() {
         ? await highlightCompositeRef.current()
         : null;
 
+      // Only send brand kit for paid users
+      const brandForGen = (!isFreeUser && selectedBrandKit) ? selectedBrandKit : null;
+
       const result = await generateVisual(
         imageDataUrl,
         description.trim(),
@@ -248,6 +294,7 @@ function Editor() {
         includeText,
         targetWidth,
         targetHeight,
+        brandForGen,
       );
 
       // Store raw Gemini outputs + config for free resize later
@@ -275,7 +322,7 @@ function Editor() {
 
       return result;
     });
-  }, [imageDataUrl, description, selectedTemplate.id, selectedPresetId, customWidth, customHeight, targetWidth, targetHeight, execute, showToast, includeText]);
+  }, [imageDataUrl, description, selectedTemplate.id, selectedPresetId, customWidth, customHeight, targetWidth, targetHeight, execute, showToast, includeText, isFreeUser, selectedBrandKit]);
 
   // Keep ref in sync so post-sign-in effect uses latest closure
   generateRef.current = handleGenerate;
@@ -397,6 +444,15 @@ function Editor() {
       let dataUrl = variations[i];
       if (!dataUrl) continue;
 
+      // Apply brand logo for paid users with a selected brand kit
+      if (!isFreeUser && selectedBrandKit?.logoDataUrl) {
+        try {
+          dataUrl = await compositeBrandLogo(dataUrl, selectedBrandKit, exportOptions.format, exportOptions.quality);
+        } catch (err) {
+          console.error('Brand logo composite failed:', err);
+        }
+      }
+
       // Apply watermark for free-credit users
       if (isFreeUser) {
         try {
@@ -414,7 +470,7 @@ function Editor() {
       sorted.length === 1 ? 'Image exported!' : `${sorted.length} images exported!`,
       'success',
     );
-  }, [variations, checkedVariations, exportOptions, isFreeUser, showToast]);
+  }, [variations, checkedVariations, exportOptions, isFreeUser, selectedBrandKit, showToast]);
 
   // --- Direct Export (no AI generation) ---
 
@@ -726,6 +782,20 @@ function Editor() {
                   includeText={includeText}
                   onIncludeTextChange={setIncludeText}
                 />
+
+                {/* Brand Kit */}
+                {user && (
+                  <>
+                    <div className="h-px bg-ds-border" />
+                    <BrandKitSelector
+                      kits={brandKits}
+                      selectedId={selectedBrandId}
+                      onSelect={setSelectedBrandId}
+                      onManage={() => setShowBrandEditor(true)}
+                      disabled={isFreeUser}
+                    />
+                  </>
+                )}
               </>
             )}
 
@@ -926,6 +996,13 @@ function Editor() {
           selectedTemplateId={selectedTemplate.id}
           onSelect={setSelectedTemplate}
           onClose={() => setShowLibrary(false)}
+        />
+      )}
+
+      {showBrandEditor && (
+        <BrandKitEditor
+          onClose={() => setShowBrandEditor(false)}
+          onKitsChange={setBrandKits}
         />
       )}
     </div>

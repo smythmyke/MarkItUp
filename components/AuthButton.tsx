@@ -117,6 +117,20 @@ export default function AuthButton() {
               role="menuitem"
               onClick={() => {
                 setDropdownOpen(false);
+                document.dispatchEvent(new CustomEvent('markitup:open-brand-kit'));
+              }}
+              className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-ds-text-muted transition-colors hover:bg-ds-elevated hover:text-ds-text"
+            >
+              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z" />
+                <line x1="7" y1="7" x2="7.01" y2="7" />
+              </svg>
+              Brand Kit
+            </button>
+            <button
+              role="menuitem"
+              onClick={() => {
+                setDropdownOpen(false);
                 document.dispatchEvent(new CustomEvent('markitup:open-purchase'));
               }}
               className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-ds-text-muted transition-colors hover:bg-ds-elevated hover:text-ds-text"

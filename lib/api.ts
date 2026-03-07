@@ -1,5 +1,5 @@
 import { auth } from './firebase';
-import type { Annotation, CreditBalance, GenerateResponse, RegenResponse, TextAnalysis } from '../types';
+import type { Annotation, BrandKit, CreditBalance, GenerateResponse, RegenResponse, TextAnalysis } from '../types';
 
 const API_BASE_URL = 'https://us-central1-markitup-ext.cloudfunctions.net/api';
 const REQUEST_TIMEOUT_MS = 30_000;
@@ -119,7 +119,17 @@ export function generateVisual(
   includeText?: boolean,
   targetWidth?: number,
   targetHeight?: number,
+  brandKit?: BrandKit | null,
 ): Promise<GenerateResponse> {
+  // Extract only prompt-relevant brand fields (don't send logo data URL to server)
+  const brandInfo = brandKit ? {
+    brandName: brandKit.name,
+    brandTagline: brandKit.tagline,
+    brandColors: brandKit.colors,
+    brandFontStyle: brandKit.fontStyle,
+    brandLogoPosition: brandKit.logoPosition,
+  } : undefined;
+
   return callAPI<GenerateResponse>(
     '/generate',
     {
@@ -131,6 +141,7 @@ export function generateVisual(
       ...(annotatedImageDataUrl ? { annotatedImageDataUrl } : {}),
       ...(includeText === false ? { includeText: false } : {}),
       ...(targetWidth && targetHeight ? { targetWidth, targetHeight } : {}),
+      ...(brandInfo ? { brandInfo } : {}),
     },
     signal,
     GENERATE_TIMEOUT_MS,

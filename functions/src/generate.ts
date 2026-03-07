@@ -4,6 +4,14 @@ import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
 import { useCredit, initCredits } from "./credits";
 import { getTemplate, buildImagePrompt, buildScenicImagePrompt } from "./templates";
 
+interface BrandInfo {
+  brandName: string;
+  brandTagline?: string;
+  brandColors: { primary: string; secondary: string; accent: string };
+  brandFontStyle: string;
+  brandLogoPosition: string;
+}
+
 interface GenerateBody {
   imageDataUrl: string;
   description: string;
@@ -14,6 +22,7 @@ interface GenerateBody {
   includeText?: boolean;
   targetWidth?: number;
   targetHeight?: number;
+  brandInfo?: BrandInfo;
 }
 
 interface HighlightBox {
@@ -202,6 +211,39 @@ Person and product share the frame — the environment tells a story about who u
 Natural, editorial photography style — candid and aspirational.
 Do NOT add any text, labels, or annotations of any kind.`,
 ];
+
+/**
+ * Build brand-aware prompt additions when a Brand Kit is active.
+ */
+function buildBrandPrompt(brandInfo: BrandInfo): string {
+  const fontDescriptions: Record<string, string> = {
+    "modern-sans": "clean, modern sans-serif typeface (like Inter, Helvetica, or SF Pro)",
+    "elegant-serif": "elegant serif typeface (like Playfair Display, Didot, or Georgia)",
+    "bold-geometric": "bold, geometric sans-serif with strong presence (like Futura, Montserrat Black, or Bebas Neue)",
+    "handwritten": "casual handwritten/script typeface with personality",
+    "monospace": "technical monospace typeface (like JetBrains Mono, SF Mono, or Fira Code)",
+  };
+
+  const fontDesc = fontDescriptions[brandInfo.brandFontStyle] || fontDescriptions["modern-sans"];
+
+  const lines = [
+    "BRAND KIT — MANDATORY STYLING:",
+    `Brand name: "${brandInfo.brandName}"`,
+  ];
+
+  if (brandInfo.brandTagline) {
+    lines.push(`Brand tagline: "${brandInfo.brandTagline}" — use as default CTA or sub-headline when appropriate.`);
+  }
+
+  lines.push(
+    `Color palette: Primary ${brandInfo.brandColors.primary}, Secondary ${brandInfo.brandColors.secondary}, Accent ${brandInfo.brandColors.accent}.`,
+    "Use the primary color as the dominant design color. Use secondary for backgrounds/depth. Use accent for highlights and CTAs.",
+    `Typography: Use a ${fontDesc} for all text elements.`,
+    `Logo space: Leave a clear area in the ${brandInfo.brandLogoPosition.replace("-", " ")} corner for logo placement (the logo will be composited separately — do NOT attempt to draw or render any logo).`,
+  );
+
+  return lines.join("\n");
+}
 
 /** IDs of lifestyle templates — used to select correct variation directives. */
 const LIFESTYLE_TEMPLATE_IDS = new Set([
@@ -495,7 +537,7 @@ export async function handleGenerateRequest(
   body: GenerateBody,
   user: admin.auth.DecodedIdToken
 ): Promise<GenerateResult> {
-  const { imageDataUrl, description, templateId, aspectRatio, imageSize, annotatedImageDataUrl, includeText, targetWidth, targetHeight } = body;
+  const { imageDataUrl, description, templateId, aspectRatio, imageSize, annotatedImageDataUrl, includeText, targetWidth, targetHeight, brandInfo } = body;
 
   if (!imageDataUrl || !templateId) {
     throw new functions.https.HttpsError(
@@ -571,16 +613,31 @@ export async function handleGenerateRequest(
   } else {
     // --- Step 1: Text Analysis ---
     console.log(`Generate: Step 1 — text analysis for user ${user.uid}, template ${templateId}`);
+    // Add brand context to text analysis if brand kit is active
+    let analysisDesc = description;
+    if (brandInfo?.brandName) {
+      const brandContext = [`Brand: "${brandInfo.brandName}"`];
+      if (brandInfo.brandTagline) brandContext.push(`Tagline: "${brandInfo.brandTagline}"`);
+      analysisDesc = `${brandContext.join(". ")}.\n\n${description}`;
+    }
+
     analysisResult = await runTextAnalysis(
       genAI,
       analysisBase64Data,
       analysisMediaType,
-      description,
+      analysisDesc,
       template.analysisPrompt,
       !!annotatedImageDataUrl,
     );
     console.log("Analysis result:", JSON.stringify(analysisResult));
     imagePrompt = buildImagePrompt(template, analysisResult);
+  }
+
+  // Inject brand kit styling into image prompt
+  if (brandInfo?.brandName) {
+    const brandPrompt = buildBrandPrompt(brandInfo);
+    imagePrompt = `${brandPrompt}\n\n${imagePrompt}`;
+    console.log(`Generate: Brand Kit active for "${brandInfo.brandName}"`);
   }
 
   console.log(`Generate: Step 2 — Gemini rendering × 2`);

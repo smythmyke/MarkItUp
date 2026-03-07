@@ -185,6 +185,29 @@ export interface ImageDimensions {
   height: number;
 }
 
+// --- Brand Kit ---
+
+export type LogoPosition = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
+export type LogoSize = 'small' | 'medium' | 'large';
+export type FontStyle = 'modern-sans' | 'elegant-serif' | 'bold-geometric' | 'handwritten' | 'monospace';
+
+export interface BrandKit {
+  id: string;
+  name: string;
+  tagline: string;
+  logoDataUrl: string; // base64, <500KB
+  logoPosition: LogoPosition;
+  logoSize: LogoSize;
+  colors: {
+    primary: string;   // hex
+    secondary: string; // hex
+    accent: string;    // hex
+  };
+  fontStyle: FontStyle;
+  createdAt: number;
+  updatedAt: number;
+}
+
 // --- Toast ---
 
 export type ToastVariant = 'error' | 'success' | 'info';

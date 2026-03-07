@@ -20,6 +20,7 @@
   "dependencies": {
     "@imgly/background-removal": "^1.7.0",
     "firebase": "^12.10.0",
+    "jszip": "^3.10.1",
     "react": "^19.2.4",
     "react-colorful": "^5.6.1",
     "react-dom": "^19.2.4"

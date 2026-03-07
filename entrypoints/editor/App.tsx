@@ -20,6 +20,7 @@ import HighlightCanvas from '../../components/HighlightCanvas';
 import TemplateLibrary from '../../components/TemplateLibrary';
 import BrandKitEditor from '../../components/BrandKitEditor';
 import BrandKitSelector from '../../components/BrandKitSelector';
+import BatchExportModal from '../../components/BatchExportModal';
 import type { BrandKit, ExportOptions, PresentationTemplate, TextAnalysis } from '../../types';
 import { defaultTemplate } from '../../lib/presentationTemplates';
 import { downloadDataUrl } from '../../lib/utils';
@@ -68,6 +69,7 @@ function Editor() {
   const [extending, setExtending] = useState(false);
   const [activeTab, setActiveTab] = useState<'edit' | 'generate' | 'export'>('edit');
   const [showBrandEditor, setShowBrandEditor] = useState(false);
+  const [showBatchExport, setShowBatchExport] = useState(false);
   const [brandKits, setBrandKits] = useState<BrandKit[]>([]);
   const [selectedBrandId, setSelectedBrandId] = useState<string | null>(null);
   const highlightCompositeRef = useRef<(() => Promise<string | null>) | null>(null);
@@ -962,6 +964,25 @@ function Editor() {
                     </div>
                   </>
                 )}
+
+                {/* Batch Export */}
+                {(hasResult || imageDataUrl) && !generating && !extending && (
+                  <>
+                    <div className="h-px bg-ds-border" />
+                    <button
+                      type="button"
+                      onClick={() => setShowBatchExport(true)}
+                      className="flex w-full items-center justify-center gap-2 rounded-md border border-ds-border-light px-3 py-2 text-sm text-ds-text-muted transition-colors hover:border-ds-accent hover:text-ds-text"
+                    >
+                      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+                        <polyline points="7 10 12 15 17 10" />
+                        <line x1="12" y1="15" x2="12" y2="3" />
+                      </svg>
+                      Batch Export All Sizes
+                    </button>
+                  </>
+                )}
               </>
             )}
 
@@ -1003,6 +1024,19 @@ function Editor() {
         <BrandKitEditor
           onClose={() => setShowBrandEditor(false)}
           onKitsChange={setBrandKits}
+        />
+      )}
+
+      {showBatchExport && imageDataUrl && (
+        <BatchExportModal
+          imageDataUrl={hasResult ? variations[selectedVariation] : imageDataUrl}
+          genAspectRatio={genGeminiConfig?.aspectRatio || null}
+          genImageSize={genGeminiConfig?.imageSize || null}
+          exportOptions={exportOptions}
+          isFreeUser={isFreeUser}
+          brandKit={!isFreeUser ? selectedBrandKit : null}
+          onClose={() => setShowBatchExport(false)}
+          onToast={showToast}
         />
       )}
     </div>

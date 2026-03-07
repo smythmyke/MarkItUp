@@ -15,6 +15,8 @@ import ImageEditor from '../../components/ImageEditor';
 import FramedPreview from '../../components/FramedPreview';
 import GeneratingPreview from '../../components/GeneratingPreview';
 import HighlightOverlay from '../../components/HighlightOverlay';
+import type { HighlightTool, Stroke } from '../../components/HighlightOverlay';
+import HighlightCanvas from '../../components/HighlightCanvas';
 import TemplateLibrary from '../../components/TemplateLibrary';
 import type { ExportOptions, PresentationTemplate, TextAnalysis } from '../../types';
 import { defaultTemplate } from '../../lib/presentationTemplates';
@@ -62,6 +64,12 @@ function Editor() {
   const [extending, setExtending] = useState(false);
   const [activeTab, setActiveTab] = useState<'edit' | 'generate' | 'export'>('edit');
   const highlightCompositeRef = useRef<(() => Promise<string | null>) | null>(null);
+
+  // Lifted highlight state (shared between sidebar controls + main canvas)
+  const [highlightActive, setHighlightActive] = useState(false);
+  const [highlightTool, setHighlightTool] = useState<HighlightTool>('brush');
+  const [highlightBrushSize, setHighlightBrushSize] = useState(24);
+  const [highlightStrokes, setHighlightStrokes] = useState<Stroke[]>([]);
 
   // Raw Gemini outputs (before resize) — used for free resize when switching output sizes
   const [rawVariations, setRawVariations] = useState<string[]>([]);
@@ -522,6 +530,8 @@ function Editor() {
     setRegenLoadingIndex(-1);
     setFreeRegenUsed(false);
     setHasHighlights(false);
+    setHighlightActive(false);
+    setHighlightStrokes([]);
     setActiveTab('edit');
   }, []);
 
@@ -537,6 +547,11 @@ function Editor() {
     setFreeRegenUsed(false);
     showToast('Image updated', 'success');
   }, [showToast]);
+
+  const handleAddStroke = useCallback((stroke: Stroke) => {
+    setHighlightStrokes((prev) => [...prev, stroke]);
+    setHasHighlights(true);
+  }, []);
 
   const hasResult = variations.length > 0;
 
@@ -577,6 +592,15 @@ function Editor() {
               src={variations[selectedVariation]}
               alt={`Selected variation ${selectedVariation + 1}`}
               className="h-full w-full rounded-lg object-contain shadow-lg"
+            />
+          ) : highlightActive ? (
+            /* Highlight mode — drawing canvas over image */
+            <HighlightCanvas
+              imageDataUrl={imageDataUrl}
+              tool={highlightTool}
+              brushSize={highlightBrushSize}
+              strokes={highlightStrokes}
+              onAddStroke={handleAddStroke}
             />
           ) : (
             /* Show source image with zoom/pan crop frame */
@@ -680,21 +704,17 @@ function Editor() {
                       imageDataUrl={imageDataUrl}
                       onHighlightsChange={setHasHighlights}
                       compositeRef={highlightCompositeRef}
+                      active={highlightActive}
+                      onActiveChange={setHighlightActive}
+                      tool={highlightTool}
+                      onToolChange={setHighlightTool}
+                      brushSize={highlightBrushSize}
+                      onBrushSizeChange={setHighlightBrushSize}
+                      strokes={highlightStrokes}
+                      onStrokesChange={setHighlightStrokes}
                     />
                   </>
                 )}
-              </>
-            )}
-
-            {/* === TAB: Generate === */}
-            {activeTab === 'generate' && (
-              <>
-                {/* Template Picker */}
-                <TemplatePicker
-                  selectedTemplateId={selectedTemplate.id}
-                  onTemplateChange={setSelectedTemplate}
-                  onBrowseAll={() => setShowLibrary(true)}
-                />
 
                 <div className="h-px bg-ds-border" />
 
@@ -711,6 +731,18 @@ function Editor() {
                   isLifestyle={isLifestyle}
                   includeText={includeText}
                   onIncludeTextChange={setIncludeText}
+                />
+              </>
+            )}
+
+            {/* === TAB: Generate === */}
+            {activeTab === 'generate' && (
+              <>
+                {/* Template Picker */}
+                <TemplatePicker
+                  selectedTemplateId={selectedTemplate.id}
+                  onTemplateChange={setSelectedTemplate}
+                  onBrowseAll={() => setShowLibrary(true)}
                 />
               </>
             )}
